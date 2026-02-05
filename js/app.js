@@ -53,6 +53,7 @@ const App = {
                 this.refreshStats().catch(err => console.error('Error loading stats:', err));
             }, 1000);
         }
+    },
 
     /**
      * Configura los event listeners
@@ -338,7 +339,11 @@ const App = {
      * @param {string} code - Código a buscar
      */
     async searchAndShowProduct(code) {
-        UI.showLoading('Buscando producto...');
+        // Solo mostrar loading si no está ya visible
+        const loadingVisible = !document.getElementById('loadingOverlay').classList.contains('hidden');
+        if (!loadingVisible) {
+            UI.showLoading('Buscando producto...');
+        }
         
         try {
             // Refrescar datos si es necesario
@@ -377,7 +382,9 @@ const App = {
             console.error('Error searching product:', error);
             UI.showToast(CONFIG.messages.connectionError, 'error');
         } finally {
-            UI.hideLoading();
+            if (!loadingVisible) {
+                UI.hideLoading();
+            }
         }
     },
 
