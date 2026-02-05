@@ -10,7 +10,7 @@ const BarcodeScanner = {
     onDetected: null,
     lastDetectedCode: null,
     lastDetectedTime: 0,
-    debounceTime: 1500,
+    debounceTime: 800,  // Reducido a 800ms para mejor detección
     devices: [],
     currentDeviceIndex: 0,
     videoElement: null,
@@ -138,12 +138,12 @@ const BarcodeScanner = {
 
             this.isRunning = true;
             
-            // Iniciar polling manual cada 200ms
+            // Iniciar polling manual cada 100ms para detección más rápida
             this.scanningInterval = setInterval(() => {
                 this.scanFrame();
-            }, 200);
+            }, 100);
 
-            console.log('✅ Escaneo activo - Polling cada 200ms');
+            console.log('✅ Escaneo activo - Polling cada 100ms');
             return true;
 
         } catch (error) {
@@ -154,7 +154,7 @@ const BarcodeScanner = {
     },
 
     /**
-     * Escanea un frame del video
+     * Escanea un frame del video con pre-procesamiento
      */
     scanFrame() {
         if (!this.isRunning || !this.videoElement || this.videoElement.readyState !== 4) {
@@ -174,19 +174,69 @@ const BarcodeScanner = {
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
             ctx.drawImage(this.videoElement, 0, 0);
 
-            // Decodificar
+            // Obtener imagen original
+            let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            // Intentar decodificar imagen original
             try {
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const result = this.multiFormatReader.decodeWithState(imageData);
                 if (result) {
                     this.handleDetection(result.getText());
+                    return;
                 }
             } catch (e) {
-                // Ignorar NotFoundException
+                // Continuar con pre-procesamiento
             }
+
+            // Pre-procesamiento: Aumentar contraste para mejor detección de Code 128
+            imageData = this.enhanceImage(imageData);
+
+            // Intentar decodificar imagen mejorada
+            try {
+                const result = this.multiFormatReader.decodeWithState(imageData);
+                if (result) {
+                    this.handleDetection(result.getText());
+                    return;
+                }
+            } catch (e) {
+                // Ignorar - continuar siguiente frame
+            }
+
         } catch (error) {
             // Silencioso
         }
+    },
+
+    /**
+     * Mejora la calidad de la imagen para detección de códigos de barras
+     */
+    enhanceImage(imageData) {
+        const data = imageData.data;
+        
+        // Aumentar contraste y brillo
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            
+            // Convertir a escala de grises
+            const gray = (r + g + b) / 3;
+            
+            // Aumentar contraste agresivamente
+            const contrast = 2.5;
+            const brightness = -50;
+            const enhanced = (gray - 128) * contrast + 128 + brightness;
+            
+            // Aplicar umbral adaptativo (binarización)
+            const value = enhanced > 128 ? 255 : 0;
+            
+            data[i] = value;
+            data[i + 1] = value;
+            data[i + 2] = value;
+            data[i + 3] = 255;
+        }
+        
+        return imageData;
     },
 
     /**
@@ -208,29 +258,30 @@ const BarcodeScanner = {
         this.lastDetectedCode = code;
         this.lastDetectedTime = now;
 
-        console.log('✅ ¡CÓDIGO DETECTADO EN VIVO!', code);
+        console.log('✅ ✅ ✅ ¡CÓDIGO DETECTADO! ✅ ✅ ✅', code);
+        console.log('📊 Longitud:', code.length, '| Tipo:', code.match(/^\d+$/) ? 'Numérico' : 'Alfanumérico');
 
-        // Vibrar para feedback (si está disponible)
+        // Vibrar para feedback
         try {
             if (navigator.vibrate) {
-                navigator.vibrate([100, 50, 100]);  // Vibración de confirmación
+                navigator.vibrate([100, 50, 100]);
             }
         } catch (e) {
             console.debug('Vibración no disponible');
         }
 
-        // Reproducir sonido de escaneo
+        // Reproducir sonido
         this.playBeep();
 
-        // Agregar feedback visual
+        // Flash visual
         this.addDetectionFlash();
 
-        // Llamar al callback
+        // Callback
         if (this.onDetected) {
             try {
-                this.onDetected(code, 'Barcode/QR');
+                this.onDetected(code, 'Barcode');
             } catch (err) {
-                console.error('Error en callback de detección:', err);
+                console.error('Error en callback:', err);
             }
         }
     },
