@@ -102,12 +102,20 @@ const BarcodeScanner = {
                 throw new Error('No se encontraron dispositivos de cámara');
             }
 
-            this.devices = devices;
-            this.currentDeviceIndex = 0;
-            const deviceId = devices[0].deviceId;
+            // Si es la primera vez, guardar dispositivos
+            if (this.devices.length === 0) {
+                this.devices = devices;
+                this.currentDeviceIndex = 0;
+            } else {
+                // Actualizar la lista de dispositivos
+                this.devices = devices;
+            }
+
+            // Usar el índice actual (puede haber sido cambiado por switchCamera)
+            const deviceId = this.devices[this.currentDeviceIndex].deviceId;
             
             console.log('📱 Cámaras disponibles:', devices.map(d => d.label || 'Cámara').join(', '));
-            console.log('✅ Usando:', devices[0].label || 'Cámara predeterminada');
+            console.log('✅ Usando (índice ' + this.currentDeviceIndex + '):', this.devices[this.currentDeviceIndex].label || 'Cámara predeterminada');
 
             // Obtener stream de video
             this.currentStream = await navigator.mediaDevices.getUserMedia({
@@ -366,21 +374,35 @@ const BarcodeScanner = {
      */
     async switchCamera() {
         try {
-            if (!this.devices || this.devices.length <= 1) {
-                throw new Error('Solo hay una cámara disponible');
+            if (!this.devices || this.devices.length === 0) {
+                throw new Error('No hay cámaras disponibles');
             }
+
+            if (this.devices.length <= 1) {
+                const msg = 'Solo hay ' + this.devices.length + ' cámara disponible';
+                console.warn(msg);
+                throw new Error(msg);
+            }
+
+            console.log('🔄 Disponibles:', this.devices.length, 'cámaras');
+            console.log('   Actual:', this.devices[this.currentDeviceIndex].label);
+
+            // Cambiar índice
+            this.currentDeviceIndex = (this.currentDeviceIndex + 1) % this.devices.length;
+            const cameraLabel = this.devices[this.currentDeviceIndex].label || ('Cámara ' + (this.currentDeviceIndex + 1));
+            
+            console.log('🔄 Cambiando a:', cameraLabel);
 
             // Detener escaneo actual
             this.stop();
 
-            // Cambiar índice
-            this.currentDeviceIndex = (this.currentDeviceIndex + 1) % this.devices.length;
-            const deviceId = this.devices[this.currentDeviceIndex].deviceId;
-            console.log('🔄 Cambiando a cámara:', this.devices[this.currentDeviceIndex].label || deviceId);
+            // Pequeña pausa antes de iniciar
+            await new Promise(r => setTimeout(r, 300));
 
             // Iniciar escaneo con nueva cámara
             await this.start();
 
+            console.log('✅ Cámara cambiada exitosamente a:', cameraLabel);
             return true;
         } catch (error) {
             console.error('❌ Error cambiando cámara:', error);

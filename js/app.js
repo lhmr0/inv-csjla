@@ -220,10 +220,18 @@ const App = {
      */
     async switchCamera() {
         try {
+            UI.showLoading('Cambiando cámara...');
             await BarcodeScanner.switchCamera();
-            UI.showToast('Cámara cambiada', 'info');
+            UI.hideLoading();
+            
+            // Obtener nombre de la cámara actual
+            const cameraLabel = BarcodeScanner.devices[BarcodeScanner.currentDeviceIndex].label || 'Cámara ' + (BarcodeScanner.currentDeviceIndex + 1);
+            UI.showToast('✅ Cámara: ' + cameraLabel, 'success');
+            console.log('📱 Cámaras totales:', BarcodeScanner.devices.length);
         } catch (error) {
-            UI.showToast('Error al cambiar cámara', 'error');
+            UI.hideLoading();
+            UI.showToast('⚠️ ' + (error.message || 'Error al cambiar cámara'), 'warning');
+            console.warn('Error:', error);
         }
     },
 
