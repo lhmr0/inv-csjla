@@ -17,6 +17,9 @@ const BarcodeScanner = {
     scanningInterval: null,
     currentStream: null,
     overlayCanvas: null,
+    lastFrameTime: 0,
+    frameCount: 0,
+    lastError: '',
 
     /**
      * Inicializa el escáner
@@ -169,6 +172,10 @@ const BarcodeScanner = {
         }
     },
 
+    lastFrameTime: 0,
+    frameCount: 0,
+    lastError: '',
+
     /**
      * Escanea un frame del video con enfoque en el centro
      */
@@ -176,6 +183,9 @@ const BarcodeScanner = {
         if (!this.isRunning || !this.videoElement || this.videoElement.readyState !== 4) {
             return;
         }
+
+        this.frameCount++;
+        const frameStartTime = performance.now();
 
         try {
             // Crear canvas
@@ -196,19 +206,23 @@ const BarcodeScanner = {
             // PRIORIDAD 1: Intentar en región central (donde está el recuadro)
             const centralRegion = this.extractCentralRegion(imageData);
             
-            if (this.tryAllStrategies(centralRegion)) {
+            if (this.tryAllStrategies(centralRegion, 'CENTRAL')) {
+                this.lastFrameTime = performance.now() - frameStartTime;
                 return;
             }
 
             // PRIORIDAD 2: Si no funciona en centro, probar toda la imagen
-            if (this.tryAllStrategies(imageData)) {
+            if (this.tryAllStrategies(imageData, 'COMPLETA')) {
+                this.lastFrameTime = performance.now() - frameStartTime;
                 return;
             }
 
+            this.lastFrameTime = performance.now() - frameStartTime;
             // Dibujar área de escaneo (sin detección)
             this.drawScanBox(false);
 
         } catch (error) {
+            this.lastError = error.message;
             console.debug('Error en scanFrame:', error.message);
         }
     },
@@ -253,71 +267,31 @@ const BarcodeScanner = {
      * Intenta todas las estrategias de detección en un imageData dado
      * Retorna true si detectó algo
      */
-    tryAllStrategies(imageData) {
-        // Estrategia 1: Original
-        try {
-            const result = this.multiFormatReader.decodeWithState(imageData);
-            if (result) {
-                this.handleDetection(result.getText());
-                this.drawScanBox(true);
-                return true;
-            }
-        } catch (e) {}
+    tryAllStrategies(imageData, regionType = 'DESCONOCIDA') {
+        const strategies = [
+            { name: 'Original', fn: (data) => data },
+            { name: 'Contrast Agr.', fn: (data) => this.enhanceImageAggressive(this.copyImageData(data)) },
+            { name: 'Binarización', fn: (data) => this.binarizeImage(this.copyImageData(data)) },
+            { name: 'Invertir', fn: (data) => this.invertImage(this.copyImageData(data)) },
+            { name: 'EdgeDetect', fn: (data) => this.applyEdgeDetection(this.copyImageData(data)) },
+            { name: 'Adaptativo', fn: (data) => this.adaptiveThreshold(this.copyImageData(data)) }
+        ];
 
-        // Estrategia 2: Contraste agresivo
-        let enhanced = this.enhanceImageAggressive(this.copyImageData(imageData));
-        try {
-            const result = this.multiFormatReader.decodeWithState(enhanced);
-            if (result) {
-                this.handleDetection(result.getText());
-                this.drawScanBox(true);
-                return true;
+        for (let i = 0; i < strategies.length; i++) {
+            const strategy = strategies[i];
+            try {
+                let processed = strategy.fn(imageData);
+                const result = this.multiFormatReader.decodeWithState(processed);
+                if (result) {
+                    console.log(`✅ DETECTADO en ${regionType} usando ${strategy.name}`);
+                    this.handleDetection(result.getText());
+                    this.drawScanBox(true, `${strategy.name} (${regionType})`);
+                    return true;
+                }
+            } catch (e) {
+                // Continuar con siguiente estrategia
             }
-        } catch (e) {}
-
-        // Estrategia 3: Binarización simple
-        let binarized = this.binarizeImage(this.copyImageData(imageData));
-        try {
-            const result = this.multiFormatReader.decodeWithState(binarized);
-            if (result) {
-                this.handleDetection(result.getText());
-                this.drawScanBox(true);
-                return true;
-            }
-        } catch (e) {}
-
-        // Estrategia 4: Invertir colores
-        let inverted = this.invertImage(this.copyImageData(imageData));
-        try {
-            const result = this.multiFormatReader.decodeWithState(inverted);
-            if (result) {
-                this.handleDetection(result.getText());
-                this.drawScanBox(true);
-                return true;
-            }
-        } catch (e) {}
-
-        // Estrategia 5: Edge detection
-        let edges = this.applyEdgeDetection(this.copyImageData(imageData));
-        try {
-            const result = this.multiFormatReader.decodeWithState(edges);
-            if (result) {
-                this.handleDetection(result.getText());
-                this.drawScanBox(true);
-                return true;
-            }
-        } catch (e) {}
-
-        // Estrategia 6: Umbral adaptativo
-        let adaptive = this.adaptiveThreshold(this.copyImageData(imageData));
-        try {
-            const result = this.multiFormatReader.decodeWithState(adaptive);
-            if (result) {
-                this.handleDetection(result.getText());
-                this.drawScanBox(true);
-                return true;
-            }
-        } catch (e) {}
+        }
 
         return false;
     },
@@ -334,11 +308,10 @@ const BarcodeScanner = {
     },
 
     /**
-     * Dibuja el recuadro de escaneo
+     * Dibuja el recuadro de escaneo con información de debug
      */
-    drawScanBox(detected = false) {
+    drawScanBox(detected = false, strategyUsed = '') {
         if (!this.overlayCanvas || !this.videoElement) {
-            console.debug('Overlay canvas o video no disponible');
             return;
         }
 
@@ -347,7 +320,6 @@ const BarcodeScanner = {
             const h = this.videoElement.videoHeight;
 
             if (w === 0 || h === 0) {
-                console.debug('Video size es 0');
                 return;
             }
 
@@ -358,7 +330,6 @@ const BarcodeScanner = {
             // Obtener contexto (puede cambiar después de redimensionar)
             const ctx = this.overlayCanvas.getContext('2d', { alpha: true });
             if (!ctx) {
-                console.debug('No se pudo obtener contexto 2D del canvas');
                 return;
             }
 
@@ -422,24 +393,56 @@ const BarcodeScanner = {
                 ctx.stroke();
             });
 
-            // Texto indicativo
+            // Texto indicativo principal
             ctx.shadowColor = 'transparent';
             ctx.shadowBlur = 0;
+            ctx.font = 'bold 18px Arial, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            
             if (detected) {
                 ctx.fillStyle = '#10B981';
-                ctx.font = 'bold 18px Arial, sans-serif';
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'bottom';
                 ctx.fillText('✅ CÓDIGO DETECTADO', x + 15, y - 15);
             } else {
                 ctx.fillStyle = '#06B6D4';
-                ctx.font = '14px Arial, sans-serif';
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'bottom';
                 ctx.fillText('Coloca el código aquí', x + 15, y - 15);
             }
-            
-            console.debug(`Overlay dibujado: ${detected ? 'DETECTADO' : 'BUSCANDO'}`);
+
+            // ====== INFORMACIÓN DE DEBUG ======
+            const debugInfoY = y + boxHeight + 30;
+            ctx.font = '12px monospace';
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+
+            const debugLines = [
+                `Frame: ${this.frameCount} | ${this.lastFrameTime.toFixed(1)}ms`,
+                `Video: ${w}x${h} | Ready: ${this.videoElement.readyState === 4 ? 'YES' : 'NO'}`,
+                `Región: ${detected ? strategyUsed : 'Escaneando...'}`,
+                `Debounce: ${((Date.now() - this.lastDetectedTime) / this.debounceTime * 100).toFixed(0)}%`,
+                `ZXing: ${typeof ZXing !== 'undefined' ? 'OK' : 'FAIL'}`
+            ];
+
+            // Fondo oscuro para debug info
+            const lineHeight = 18;
+            const debugHeight = (debugLines.length + 1) * lineHeight;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(x, debugInfoY - 5, boxWidth, debugHeight);
+
+            // Dibujar líneas de debug
+            debugLines.forEach((line, idx) => {
+                ctx.fillStyle = '#0f0';
+                ctx.font = '11px Courier New, monospace';
+                ctx.fillText(line, x + 10, debugInfoY + (idx * lineHeight));
+            });
+
+            // Error info si existe
+            if (this.lastError) {
+                ctx.fillStyle = '#ff6666';
+                ctx.font = 'bold 11px Courier New, monospace';
+                ctx.fillText(`Error: ${this.lastError.substring(0, 40)}...`, x + 10, debugInfoY + (debugLines.length * lineHeight));
+            }
+
         } catch (e) {
             console.error('Error dibujando scan box:', e);
         }
