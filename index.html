@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Inventario - Escáner de Códigos</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2196F3">
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <h1>📦 Sistema de Inventario</h1>
+            <div class="user-info" id="userInfo">
+                <span id="userName">No conectado</span>
+            </div>
+        </header>
+
+        <!-- Pantalla de Login -->
+        <section id="loginSection" class="section">
+            <div class="card">
+                <h2>🔐 Iniciar Sesión</h2>
+                <p style="color: #666; margin-bottom: 1rem;">Ingrese su nombre para comenzar a inventariar</p>
+                <div class="form-group">
+                    <label for="operatorName">Nombre del Operador:</label>
+                    <input type="text" id="operatorName" placeholder="Ingrese su nombre" required autofocus>
+                </div>
+                <button id="btnConnect" class="btn btn-primary" style="width: 100%;">Conectar</button>
+            </div>
+        </section>
+
+        <!-- Pantalla Principal -->
+        <section id="mainSection" class="section hidden">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" data-tab="scanner">📷 Escanear</button>
+                <button class="tab" data-tab="manual">✏️ Manual</button>
+                <button class="tab" data-tab="history">📋 Historial</button>
+                <button class="tab" data-tab="stats">📊 Estadísticas</button>
+            </div>
+
+            <!-- Tab: Scanner -->
+            <div id="scannerTab" class="tab-content active">
+                <div class="card">
+                    <h3>Escanear Código de Barras</h3>
+                    <div id="scannerContainer">
+                        <div id="video" style="width: 100%; min-height: 400px; border-radius: 12px; overflow: hidden; background: #000;"></div>
+                    </div>
+                    <div class="scanner-controls">
+                        <button id="btnStartScan" class="btn btn-success">▶️ Iniciar Cámara</button>
+                        <button id="btnStopScan" class="btn btn-danger hidden">⏹️ Detener Cámara</button>
+                        <button id="btnSwitchCamera" class="btn btn-secondary hidden">🔄 Cambiar Cámara</button>
+                    </div>
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label for="imageInput">O cargar una imagen:</label>
+                        <input type="file" id="imageInput" accept="image/*" />
+                        <button id="btnProcessImage" class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem;">📸 Procesar Imagen</button>
+                    </div>
+                    <div id="manualFallback" class="form-group" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #ddd;">
+                        <label for="manualImageCode">Si la detección automática falla, ingrese el código manualmente:</label>
+                        <input type="text" id="manualImageCode" placeholder="Ingrese el código que ve en la imagen" />
+                        <button id="btnUseManualCode" class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem;">✅ Usar este código</button>
+                    </div>
+                    <div id="lastScanned" class="last-scanned hidden">
+                        <strong>Último código escaneado:</strong>
+                        <span id="lastCode"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Manual -->
+            <div id="manualTab" class="tab-content hidden">
+                <div class="card">
+                    <h3>Ingreso Manual de Código</h3>
+                    <div class="form-group">
+                        <label for="manualCode">Código de Barras:</label>
+                        <input type="text" id="manualCode" placeholder="Ingrese el código manualmente">
+                    </div>
+                    <button id="btnManualSearch" class="btn btn-primary">🔍 Buscar</button>
+                </div>
+            </div>
+
+            <!-- Tab: History -->
+            <div id="historyTab" class="tab-content hidden">
+                <div class="card">
+                    <h3>Historial de Escaneos</h3>
+                    <div class="history-controls">
+                        <button id="btnClearHistory" class="btn btn-danger btn-small">🗑️ Limpiar</button>
+                        <button id="btnExportHistory" class="btn btn-secondary btn-small">📥 Exportar</button>
+                    </div>
+                    <div id="historyList" class="history-list">
+                        <p class="empty-message">No hay escaneos realizados</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Stats -->
+            <div id="statsTab" class="tab-content hidden">
+                <div class="card">
+                    <h3>Estadísticas de Inventario</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-number" id="statTotal">0</span>
+                            <span class="stat-label">Total Items</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number" id="statInventoried">0</span>
+                            <span class="stat-label">Inventariados</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number" id="statPending">0</span>
+                            <span class="stat-label">Pendientes</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number" id="statToday">0</span>
+                            <span class="stat-label">Hoy</span>
+                        </div>
+                    </div>
+                    <button id="btnRefreshStats" class="btn btn-primary">🔄 Actualizar Estadísticas</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Modal de Resultado -->
+        <div id="resultModal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <div id="modalBody">
+                    <!-- Contenido dinámico -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay hidden">
+            <div class="spinner"></div>
+            <p>Procesando...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="js/config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/sheets.js"></script>
+    <script src="js/scanner-html5qrcode.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

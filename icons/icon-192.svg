@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="24" fill="#2196F3"/>
+  <rect x="40" y="60" width="8" height="72" fill="white"/>
+  <rect x="56" y="60" width="4" height="72" fill="white"/>
+  <rect x="68" y="60" width="12" height="72" fill="white"/>
+  <rect x="88" y="60" width="4" height="72" fill="white"/>
+  <rect x="100" y="60" width="8" height="72" fill="white"/>
+  <rect x="116" y="60" width="4" height="72" fill="white"/>
+  <rect x="128" y="60" width="12" height="72" fill="white"/>
+  <rect x="148" y="60" width="4" height="72" fill="white"/>
+  <text x="96" y="155" font-family="Arial" font-size="16" fill="white" text-anchor="middle">INVENTARIO</text>
+</svg>

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico de Cámara</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2196F3; margin-bottom: 20px; }
+        h2 { color: #333; font-size: 1.2rem; margin: 20px 0 10px; border-bottom: 2px solid #2196F3; padding-bottom: 5px; }
+        .test-item {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .status.success { background: #4CAF50; color: white; }
+        .status.error { background: #f44336; color: white; }
+        .status.warning { background: #ff9800; color: white; }
+        .video-test {
+            width: 100%;
+            background: #000;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover { background: #1976D2; }
+        button.danger { background: #f44336; }
+        button.danger:hover { background: #d32f2f; }
+        .log {
+            background: #1e1e1e;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+        .log-entry {
+            margin: 5px 0;
+        }
+        .info { color: #0f0; }
+        .error { color: #f00; }
+        .warning { color: #ff0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Diagnóstico de Cámara</h1>
+        
+        <h2>✅ Verificaciones del Sistema</h2>
+        
+        <div class="test-item">
+            <strong>HTTPS/Localhost</strong><br>
+            <span id="httpsStatus" class="status">-</span>
+            <span id="httpsMsg"></span>
+        </div>
+
+        <div class="test-item">
+            <strong>getUserMedia API</strong><br>
+            <span id="getUserMediaStatus" class="status">-</span>
+            <span id="getUserMediaMsg"></span>
+        </div>
+
+        <div class="test-item">
+            <strong>Cámaras Disponibles</strong><br>
+            <span id="camerasStatus" class="status">-</span>
+            <span id="camerasMsg"></span>
+            <button onclick="enumerateCameras()">Verificar Cámaras</button>
+        </div>
+
+        <div class="test-item">
+            <strong>Prueba de Video HTML5</strong><br>
+            <button onclick="testHTML5Video()">Probar Video HTML5</button>
+            <button onclick="stopHTML5Video()" class="danger">Detener</button>
+            <video id="testVideo" class="video-test" playsinline autoplay muted></video>
+        </div>
+
+        <div class="test-item">
+            <strong>QuaggaJS</strong><br>
+            <span id="quaggaStatus" class="status">-</span>
+            <span id="quaggaMsg"></span>
+        </div>
+
+        <div class="test-item">
+            <strong>ZXing</strong><br>
+            <span id="zxingStatus" class="status">-</span>
+            <span id="zxingMsg"></span>
+        </div>
+
+        <div class="test-item">
+            <strong>jsQR</strong><br>
+            <span id="jsqrStatus" class="status">-</span>
+            <span id="jsqrMsg"></span>
+        </div>
+
+        <h2>📊 Logs</h2>
+        <button onclick="clearLogs()">Limpiar Logs</button>
+        <button onclick="downloadLogs()">Descargar Logs</button>
+        <div class="log" id="logs"></div>
+    </div>
+
+    <!-- html5-qrcode Library -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <script>
+        let mediaStream = null;
+        const logs = [];
+
+        function log(message, type = 'info') {
+            const entry = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.push({message: entry, type});
+            
+            const logsDiv = document.getElementById('logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = entry;
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            logs.length = 0;
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        function downloadLogs() {
+            const content = logs.map(l => l.message).join('\n');
+            const blob = new Blob([content], {type: 'text/plain'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `camera-logs-${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function setStatus(elementId, success, message) {
+            const statusEl = document.getElementById(elementId + 'Status');
+            const msgEl = document.getElementById(elementId + 'Msg');
+            
+            if (statusEl) {
+                statusEl.className = 'status ' + (success ? 'success' : 'error');
+                statusEl.textContent = success ? '✅' : '❌';
+            }
+            if (msgEl) msgEl.textContent = message;
+            
+            log(`${elementId}: ${message}`, success ? 'info' : 'error');
+        }
+
+        function checkHTTPS() {
+            const isHTTPS = location.protocol === 'https:';
+            const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+            const success = isHTTPS || isLocalhost;
+            const message = isHTTPS ? 'HTTPS activo' : (isLocalhost ? 'Localhost detectado' : 'No es HTTPS ni localhost');
+            setStatus('https', success, message);
+        }
+
+        function checkGetUserMedia() {
+            const success = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+            const message = success ? 'API disponible' : 'API no disponible';
+            setStatus('getUserMedia', success, message);
+        }
+
+        function checkQuagga() {
+            const success = typeof Quagga !== 'undefined';
+            const message = success ? 'QuaggaJS cargado' : 'QuaggaJS no disponible (usando ZXing)';
+            setStatus('quagga', success, message);
+        }
+
+        function checkZXing() {
+            const success = typeof ZXing !== 'undefined';
+            const message = success ? 'ZXing cargado correctamente' : 'ZXing no disponible';
+            setStatus('zxing', success, message);
+        }
+
+        function checkHtml5QRCode() {
+            const success = typeof Html5Qrcode !== 'undefined';
+            const message = success ? 'html5-qrcode cargado correctamente ✅' : 'html5-qrcode no disponible ❌';
+            setStatus('jsqr', success, message);
+        }
+
+        async function enumerateCameras() {
+            try {
+                log('Enumerando dispositivos de cámara...', 'info');
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const cameras = devices.filter(d => d.kind === 'videoinput');
+                
+                log(`Se encontraron ${cameras.length} cámaras`, 'info');
+                cameras.forEach((cam, i) => {
+                    log(`  ${i+1}. ${cam.label || 'Cámara ' + i} (ID: ${cam.deviceId.substring(0, 20)}...)`, 'info');
+                });
+                
+                setStatus('cameras', cameras.length > 0, `${cameras.length} cámara(s) disponible(s)`);
+            } catch (error) {
+                setStatus('cameras', false, error.message);
+            }
+        }
+
+        async function testHTML5Video() {
+            try {
+                log('Iniciando prueba de video HTML5...', 'info');
+                const video = document.getElementById('testVideo');
+                
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: {ideal: 1280},
+                        height: {ideal: 720},
+                        facingMode: 'environment'
+                    },
+                    audio: false
+                });
+                
+                log('✅ Acceso a cámara otorgado', 'info');
+                mediaStream = stream;
+                
+                video.srcObject = stream;
+                video.style.display = 'block';
+                
+                log('✅ Stream asignado al video', 'info');
+                
+                // Esperar a que inicie
+                await new Promise(resolve => {
+                    video.onloadedmetadata = () => {
+                        log(`✅ Video metadata cargado: ${video.videoWidth}x${video.videoHeight}`, 'info');
+                        resolve();
+                    };
+                });
+                
+                log('✅ Prueba de video HTML5 exitosa', 'info');
+            } catch (error) {
+                log(`❌ Error en prueba de video: ${error.message}`, 'error');
+            }
+        }
+
+        function stopHTML5Video() {
+            try {
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                    log('✅ Stream de video detenido', 'info');
+                }
+                const video = document.getElementById('testVideo');
+                video.style.display = 'none';
+                video.srcObject = null;
+            } catch (error) {
+                log(`Error deteniendo video: ${error.message}`, 'error');
+            }
+        }
+
+        // Ejecutar verificaciones al cargar
+        window.addEventListener('load', () => {
+            log('Iniciando diagnóstico de cámara...', 'info');
+            log(`Navegador: ${navigator.userAgent.substring(0, 50)}...`, 'info');
+            log(`Protocolo: ${location.protocol}`, 'info');
+            log(`Hostname: ${location.hostname}`, 'info');
+            
+            checkHTTPS();
+            checkGetUserMedia();
+            checkQuagga();
+            checkZXing();
+            checkHtml5QRCode();
+            enumerateCameras();
+        });
+    </script>
+</body>
+</html>

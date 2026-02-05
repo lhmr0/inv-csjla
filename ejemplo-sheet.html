@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ejemplo de Estructura - Google Sheet</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        h1 { color: #2196F3; }
+        table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #2196F3; color: white; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .code { font-family: monospace; font-weight: bold; }
+        .yes { color: green; font-weight: bold; }
+        .no { color: #888; }
+        .instructions { background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .instructions h2 { margin-top: 0; color: #1976D2; }
+        .instructions ol { margin: 0; padding-left: 20px; }
+        .instructions li { margin: 8px 0; }
+    </style>
+</head>
+<body>
+    <h1>📊 Estructura del Google Sheet para Inventario</h1>
+    
+    <div class="instructions">
+        <h2>📋 Instrucciones</h2>
+        <ol>
+            <li>Crea un nuevo Google Sheet en <a href="https://sheets.google.com" target="_blank">sheets.google.com</a></li>
+            <li>Copia la estructura de la tabla de abajo</li>
+            <li>Agrega tus productos con sus códigos de barras</li>
+            <li>Comparte el documento: <strong>Compartir → Cualquiera con el enlace → Editor</strong></li>
+            <li>Copia la URL y pégala en la aplicación de inventario</li>
+        </ol>
+    </div>
+
+    <h2>📦 Ejemplo de Datos</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>A: Código</th>
+                <th>B: Descripción</th>
+                <th>C: Categoría</th>
+                <th>D: Ubicación</th>
+                <th>E: Cantidad</th>
+                <th>F: Inventariado</th>
+                <th>G: Fecha Inventario</th>
+                <th>H: Realizado Por</th>
+                <th>I: Observaciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="code">7501234567890</td>
+                <td>Laptop Dell Inspiron 15</td>
+                <td>Equipos de Cómputo</td>
+                <td>Oficina 101</td>
+                <td>5</td>
+                <td class="yes">SI</td>
+                <td>05/02/2026 10:30</td>
+                <td>Juan Pérez</td>
+                <td>En buen estado</td>
+            </tr>
+            <tr>
+                <td class="code">7509876543210</td>
+                <td>Monitor Samsung 24"</td>
+                <td>Equipos de Cómputo</td>
+                <td>Oficina 101</td>
+                <td>10</td>
+                <td class="no">NO</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="code">7501111222333</td>
+                <td>Teclado Logitech K120</td>
+                <td>Periféricos</td>
+                <td>Almacén A</td>
+                <td>25</td>
+                <td class="yes">SI</td>
+                <td>04/02/2026 15:45</td>
+                <td>María García</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="code">7504445556667</td>
+                <td>Mouse Inalámbrico HP</td>
+                <td>Periféricos</td>
+                <td>Almacén A</td>
+                <td>30</td>
+                <td class="no">NO</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="code">7507778889990</td>
+                <td>Silla Ergonómica</td>
+                <td>Mobiliario</td>
+                <td>Oficina 102</td>
+                <td>8</td>
+                <td class="no">NO</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="code">7501234509876</td>
+                <td>Escritorio de Trabajo</td>
+                <td>Mobiliario</td>
+                <td>Oficina 102</td>
+                <td>4</td>
+                <td class="yes">SI</td>
+                <td>03/02/2026 09:15</td>
+                <td>Carlos López</td>
+                <td>Falta una pata</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>📝 Notas Importantes</h2>
+    <ul>
+        <li><strong>Columna A (Código):</strong> Debe contener el código de barras exacto del producto</li>
+        <li><strong>Columna F (Inventariado):</strong> Usa "SI" o "NO" (se actualizará automáticamente)</li>
+        <li><strong>Columnas G, H, I:</strong> Se llenan automáticamente al marcar como inventariado</li>
+        <li>Puedes agregar más columnas después de la I si necesitas campos adicionales</li>
+        <li>La primera fila debe contener los encabezados</li>
+    </ul>
+
+    <h2>🔗 Plantilla de Google Sheet</h2>
+    <p>Puedes crear una copia de esta plantilla:</p>
+    <ol>
+        <li>Abre Google Sheets</li>
+        <li>Crea un nuevo documento</li>
+        <li>Copia los encabezados de la tabla de arriba en la primera fila</li>
+        <li>Agrega tus datos de inventario</li>
+    </ol>
+</body>
+</html>

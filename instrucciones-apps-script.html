@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía - Google Apps Script para Actualizar Excel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .section h3 {
+            color: #667eea;
+            font-size: 1.3rem;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        
+        .step-number {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .step-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .screenshot-placeholder {
+            background: #e9ecef;
+            padding: 40px;
+            text-align: center;
+            border-radius: 8px;
+            margin: 15px 0;
+            color: #6c757d;
+        }
+        
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .code-block code {
+            display: block;
+        }
+        
+        .important-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .important-box strong {
+            color: #d39e00;
+        }
+        
+        .success-box {
+            background: #d4edda;
+            border: 1px solid #28a745;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .error-box {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .button {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin: 10px 0;
+            transition: background 0.3s;
+        }
+        
+        .button:hover {
+            background: #764ba2;
+        }
+        
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        table th {
+            background: #667eea;
+            color: white;
+        }
+        
+        .column-info {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #ddd;
+        }
+        
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .section h2 {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Google Apps Script</h1>
+            <p>Guía para configurar actualizaciones automáticas en Google Sheets</p>
+        </header>
+        
+        <div class="content">
+            <!-- Introducción -->
+            <div class="section">
+                <h2>¿Por qué necesito esto?</h2>
+                <p>Por defecto, Google Sheets no permite que aplicaciones web actualicen datos directamente. Para que la aplicación de inventario actualice automáticamente los datos en tu Google Sheet, necesitas crear un "Apps Script" que actúe como intermediario.</p>
+                
+                <div class="success-box">
+                    <strong>✅ Con Apps Script:</strong>
+                    <ul>
+                        <li>Los datos se actualizan automáticamente en Google Sheets</li>
+                        <li>Los cambios se sincronizan en tiempo real</li>
+                        <li>Todo sucede detrás de escenas, sin intervención manual</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Pasos de instalación -->
+            <div class="section">
+                <h2>📋 Instalación Paso a Paso</h2>
+                
+                <div class="step">
+                    <div class="step-title">
+                        <span class="step-number">1</span>
+                        Abre tu Google Sheet
+                    </div>
+                    <p>Ve a <a href="https://sheets.google.com" target="_blank">Google Sheets</a> y abre la hoja que usarás para el inventario.</p>
+                </div>
+                
+                <div class="step">
+                    <div class="step-title">
+                        <span class="step-number">2</span>
+                        Accede a Apps Script
+                    </div>
+                    <p>En la parte superior, haz clic en <strong>Extensiones → Apps Script</strong></p>
+                    <div class="screenshot-placeholder">
+                        Extensiones → Apps Script
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-title">
+                        <span class="step-number">3</span>
+                        Reemplaza el código
+                    </div>
+                    <p>Se abrirá una nueva pestaña con código por defecto. <strong>Borra todo</strong> y pega el siguiente código:</p>
+                    <div class="code-block">
+<code>/**
+ * Google Apps Script para Sistema de Inventario
+ */
+
+function doGet(e) {
+  try {
+    const params = e.parameter;
+    const spreadsheetId = params.sheetId;
+    const sheetName = params.sheetName || 'Hoja1';
+    const rowIndex = parseInt(params.row);
+    const inventariado = params.inventariado || 'SI';
+    const fecha = params.fecha || '';
+    const operador = params.operador || '';
+    const observaciones = params.observaciones || '';
+    
+    if (!spreadsheetId || !rowIndex || rowIndex < 2) {
+      return createErrorResponse('Parámetros inválidos');
+    }
+    
+    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return createErrorResponse(`La hoja "${sheetName}" no existe`);
+    }
+    
+    sheet.getRange(rowIndex, 6).setValue(inventariado);
+    sheet.getRange(rowIndex, 7).setValue(fecha);
+    sheet.getRange(rowIndex, 8).setValue(operador);
+    if (observaciones) {
+      sheet.getRange(rowIndex, 9).setValue(observaciones);
+    }
+    
+    return createSuccessResponse({
+      message: 'Inventario actualizado correctamente',
+      row: rowIndex,
+      date: fecha,
+      operator: operador
+    });
+  } catch (error) {
+    Logger.log('Error: ' + error.toString());
+    return createErrorResponse(`Error del servidor: ${error.toString()}`);
+  }
+}
+
+function doPost(e) {
+  return doGet(e);
+}
+
+function createSuccessResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify({
+    success: true,
+    timestamp: new Date().toISOString(),
+    data: data
+  }))
+  .setMimeType(ContentService.MimeType.JSON)
+  .setHeader('Access-Control-Allow-Origin', '*')
+  .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+function createErrorResponse(message) {
+  return ContentService.createTextOutput(JSON.stringify({
+    success: false,
+    timestamp: new Date().toISOString(),
+    error: message
+  }))
+  .setMimeType(ContentService.MimeType.JSON)
+  .setHeader('Access-Control-Allow-Origin', '*')
+  .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput('')
+    .setHeader('Access-Control-Allow-Origin', '*')
+    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}</code>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-title">
+                        <span class="step-number">4</span>
+                        Guarda el script
+                    </div>
+                    <p>Presiona <strong>Ctrl+S</strong> o haz clic en el botón "Guardar"</p>
+                </div>
+                
+                <div class="step">
+                    <div class="step-title">
+                        <span class="step-number">5</span>
+                        Desplega como Web App
+                    </div>
+                    <p>Haz clic en el botón <strong>"Desplegar"</strong> (arriba a la derecha) → selecciona <strong>"Nueva implementación"</strong></p>
+                </div>
+                
+                <div class="step">
+                    <div class="step-title">
+                        <span class="step-number">6</span>
+                        Configura el despliegue
+                    </div>
+                    <p>Se abrirá un diálogo. Configura así:</p>
+                    <ul>
+                        <li><strong>Tipo:</strong> Aplicación web</li>
+                        <li><strong>Ejecutar como:</strong> Tu correo de Google</li>
+                        <li><strong>Quién tiene acceso:</strong> Cualquiera</li>
+                    </ul>
+                </div>
+                
+                <div class="step">
+                    <div class="step-title">
+                        <span class="step-number">7</span>
+                        Copia la URL
+                    </div>
+                    <p>Después de presionar "Desplegar", verás una URL como:</p>
+                    <div class="code-block">
+                        <code>https://script.google.com/macros/s/AKfycbxxx...../usercontent</code>
+                    </div>
+                    <p><strong>¡Copia esta URL!</strong></p>
+                </div>
+                
+                <div class="step">
+                    <div class="step-title">
+                        <span class="step-number">8</span>
+                        Pega la URL en la app
+                    </div>
+                    <p>Abre la aplicación de inventario y en el campo <strong>"URL del Google Apps Script"</strong> pega la URL que copiaste en el paso anterior.</p>
+                </div>
+            </div>
+            
+            <!-- Validación de columnas -->
+            <div class="section">
+                <h2>📊 Estructura del Google Sheet</h2>
+                <p>Asegúrate que tu Google Sheet tenga la siguiente estructura:</p>
+                
+                <table>
+                    <tr>
+                        <th>Columna</th>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                    </tr>
+                    <tr>
+                        <td><strong>A</strong></td>
+                        <td>Código</td>
+                        <td>Código de barras del producto</td>
+                    </tr>
+                    <tr>
+                        <td><strong>B</strong></td>
+                        <td>Descripción</td>
+                        <td>Nombre del producto</td>
+                    </tr>
+                    <tr>
+                        <td><strong>C</strong></td>
+                        <td>Categoría</td>
+                        <td>Categoría del producto</td>
+                    </tr>
+                    <tr>
+                        <td><strong>D</strong></td>
+                        <td>Ubicación</td>
+                        <td>Dónde está ubicado</td>
+                    </tr>
+                    <tr>
+                        <td><strong>E</strong></td>
+                        <td>Cantidad</td>
+                        <td>Cantidad disponible</td>
+                    </tr>
+                    <tr style="background: #fff3cd;">
+                        <td><strong>F</strong></td>
+                        <td>Inventariado</td>
+                        <td>SI/NO (se actualiza automáticamente)</td>
+                    </tr>
+                    <tr style="background: #fff3cd;">
+                        <td><strong>G</strong></td>
+                        <td>Fecha Inventario</td>
+                        <td>Fecha y hora (se actualiza automáticamente)</td>
+                    </tr>
+                    <tr style="background: #fff3cd;">
+                        <td><strong>H</strong></td>
+                        <td>Realizado Por</td>
+                        <td>Nombre del operador (se actualiza automáticamente)</td>
+                    </tr>
+                    <tr style="background: #fff3cd;">
+                        <td><strong>I</strong></td>
+                        <td>Observaciones</td>
+                        <td>Notas opcionales (se actualiza automáticamente)</td>
+                    </tr>
+                </table>
+                
+                <div class="important-box">
+                    <strong>⚠️ Importante:</strong> Las columnas F, G, H e I son las que se actualizan automáticamente. Si usas una estructura diferente, debes ajustar los números de columna en el código del Apps Script.
+                </div>
+            </div>
+            
+            <!-- Solución de problemas -->
+            <div class="section">
+                <h2>🔧 Solución de Problemas</h2>
+                
+                <h3>❌ "La hoja no existe"</h3>
+                <p>Verifica que el nombre de la hoja sea exactamente igual al que aparece en la pestaña de Google Sheets. Es sensible a mayúsculas/minúsculas.</p>
+                
+                <h3>❌ "Parámetros inválidos"</h3>
+                <p>Asegúrate que todos los parámetros se están enviando correctamente. Verifica la consola del navegador (F12) para ver qué se está enviando.</p>
+                
+                <h3>❌ "Acceso denegado"</h3>
+                <p>Cuando despliegas por primera vez, Google te pedirá permisos. Debes aceptarlos. Asegúrate de permitir acceso a tu Google Sheet.</p>
+                
+                <h3>❌ Los datos no se actualizan</h3>
+                <p>Prueba estos pasos:</p>
+                <ol>
+                    <li>Abre la consola del navegador (F12)</li>
+                    <li>Busca mensajes de error en la pestaña "Consola"</li>
+                    <li>Intenta nuevamente y verifica los logs del Apps Script en Google</li>
+                    <li>En Google Apps Script, abre "Ejecuciones" para ver si hay errores</li>
+                </ol>
+            </div>
+            
+            <!-- Verificación -->
+            <div class="section">
+                <h2>✅ Verificar que funciona</h2>
+                
+                <ol>
+                    <li>Abre la aplicación de inventario</li>
+                    <li>Ingresa todos los datos (nombre, URL de Sheet, URL de Web App)</li>
+                    <li>Escanea o busca un código de barras manualmente</li>
+                    <li>Cuando aparezca el producto, presiona "Marcar Inventariado"</li>
+                    <li>Verifica que en Google Sheets aparezca actualizado en tiempo real</li>
+                </ol>
+                
+                <div class="success-box">
+                    <strong>✅ Si todo funciona:</strong>
+                    <p>¡Excelente! Tu sistema de inventario está completamente configurado. Ahora podrás escanear códigos de barras y los datos se actualizarán automáticamente en Google Sheets.</p>
+                </div>
+            </div>
+            
+            <!-- Ayuda adicional -->
+            <div class="section">
+                <h2>❓ ¿Necesitas ayuda?</h2>
+                <p>Si tienes problemas, intenta:</p>
+                <ol>
+                    <li>Recargar la página (Ctrl+F5)</li>
+                    <li>Borrar el caché del navegador</li>
+                    <li>Usar otro navegador (Chrome, Firefox, etc.)</li>
+                    <li>Verificar que Google Sheets esté compartido públicamente en modo "Editor"</li>
+                    <li>Revisar los logs del Apps Script en Google</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>📱 Sistema de Inventario con Escáner de Códigos de Barras</p>
+            <p style="margin-top: 10px; font-size: 0.9rem; color: #666;">Última actualización: Febrero 2026</p>
+        </div>
+    </div>
+</body>
+</html>
