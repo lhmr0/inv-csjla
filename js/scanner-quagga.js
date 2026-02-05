@@ -18,6 +18,24 @@ const BarcodeScanner = {
     lastError: '',
     capturedFrames: [],
     maxStoredFrames: 5,
+    codeReader: true, // Dummy para compatibilidad con app.js
+
+    /**
+     * Solicita permisos de cámara
+     */
+    async requestPermissions() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' },
+                audio: false
+            });
+            stream.getTracks().forEach(track => track.stop());
+            return true;
+        } catch (error) {
+            console.error('Permiso de cámara denegado:', error);
+            return false;
+        }
+    },
 
     /**
      * Inicializa el escáner
@@ -610,5 +628,54 @@ const BarcodeScanner = {
             data[i + 2] = 255 - data[i + 2];
         }
         return imageData;
+    },
+
+    /**
+     * Procesa una imagen cargada
+     */
+    processImage(imageFile) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Crear canvas
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+
+                    // Intentar decodificar
+                    Quagga.decodeSingle({
+                        src: canvas.toDataURL('image/jpeg'),
+                        num_of_workers: 1,
+                        worker: {
+                            ImageSrcType: 'canvas',
+                            patch: {
+                                x: 0,
+                                y: 0
+                            }
+                        }
+                    }, (result) => {
+                        if (result && result.codeResult) {
+                            console.log('✅ Código detectado en imagen:', result.codeResult.code);
+                            resolve({
+                                code: result.codeResult.code,
+                                format: result.codeResult.format
+                            });
+                        } else {
+                            console.log('No se detectó código en la imagen');
+                            resolve(null);
+                        }
+                    });
+                };
+                img.src = e.target.result;
+            };
+
+            reader.readAsDataURL(imageFile);
+        });
     }
 };
