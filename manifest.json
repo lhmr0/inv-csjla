@@ -1,11 +1,11 @@
 {
-    "name": "Sistema de Inventario",
+    "name": "Inventario - CSJLA",
     "short_name": "Inventario",
     "description": "Sistema de gestión de inventario con escáner de códigos de barras",
     "start_url": "/index.html",
     "display": "standalone",
     "background_color": "#ffffff",
-    "theme_color": "#2196F3",
+    "theme_color": "#1F2937",
     "orientation": "portrait-primary",
     "icons": [
         {

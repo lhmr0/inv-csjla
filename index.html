@@ -3,38 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventario - CSJLA | Escáner de Códigos</title>
+    <title>Inventario - CSJLA</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2196F3">
+    <meta name="theme-color" content="#1F2937">
+    <meta name="description" content="Sistema moderno de inventario con escáner de códigos de barras en tiempo real">
     <link rel="icon" type="image/png" href="icons/icon-192.png">
 </head>
 <body>
     <div class="app-container">
         <!-- Header -->
         <header class="header">
-            <h1>📦 Inventario - CSJLA</h1>
-            <div class="user-info" id="userInfo">
-                <span>👤</span>
-                <span id="userName">No conectado</span>
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>Inventario</h1>
+                    <p class="header-subtitle">CSJLA</p>
+                </div>
+                <div class="user-info" id="userInfo">
+                    <span id="userName">No conectado</span>
+                </div>
             </div>
         </header>
 
         <!-- Pantalla de Login -->
         <section id="loginSection" class="section">
-            <div class="card login-card" style="margin-top: 2rem;">
-                <div style="text-align: center; margin-bottom: 1.5rem;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">📦</div>
-                    <h2>Inventario - CSJLA</h2>
-                    <p style="color: var(--text-secondary); margin-top: 0.5rem; font-weight: 500;">Sistema de escaneo de códigos de barras</p>
-                </div>
+            <div class="card">
+                <h2>🔐 Iniciar Sesión</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.95rem;">Ingrese su nombre para comenzar a inventariar</p>
                 <div class="form-group">
-                    <label for="operatorName">👤 Nombre del Operador:</label>
+                    <label for="operatorName">Nombre del Operador:</label>
                     <input type="text" id="operatorName" placeholder="Ej: Juan Pérez" required autofocus>
                 </div>
-                <button id="btnConnect" class="btn btn-primary" style="width: 100%; font-size: 1.05rem; padding: 1rem;">
-                    🚀 Conectar
-                </button>
+                <button id="btnConnect" class="btn btn-primary btn-block" style="width: 100%;">Conectar</button>
             </div>
         </section>
 

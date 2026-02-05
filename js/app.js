@@ -5,7 +5,6 @@
 const App = {
     operator: null,
     isConnected: false,
-    isRefreshingStats: false,
 
     /**
      * Inicializa la aplicación
@@ -46,13 +45,6 @@ const App = {
         
         // Actualizar historial
         this.updateHistoryView();
-        
-        // Cargar estadísticas sin bloquear (si está conectado)
-        if (this.isConnected) {
-            setTimeout(() => {
-                this.refreshStats().catch(err => console.error('Error loading stats:', err));
-            }, 1000);
-        }
     },
 
     /**
@@ -163,7 +155,8 @@ const App = {
             UI.showMain(data.operator);
             UI.showToast('Conectado correctamente', 'success');
             
-            // No llamar a refreshStats automáticamente para evitar bloqueos
+            // Actualizar estadísticas
+            this.refreshStats();
             
         } catch (error) {
             console.error('Error connecting:', error);
@@ -339,11 +332,7 @@ const App = {
      * @param {string} code - Código a buscar
      */
     async searchAndShowProduct(code) {
-        // Solo mostrar loading si no está ya visible
-        const loadingVisible = !document.getElementById('loadingOverlay').classList.contains('hidden');
-        if (!loadingVisible) {
-            UI.showLoading('Buscando producto...');
-        }
+        UI.showLoading('Buscando producto...');
         
         try {
             // Refrescar datos si es necesario
@@ -382,9 +371,7 @@ const App = {
             console.error('Error searching product:', error);
             UI.showToast(CONFIG.messages.connectionError, 'error');
         } finally {
-            if (!loadingVisible) {
-                UI.hideLoading();
-            }
+            UI.hideLoading();
         }
     },
 
@@ -413,12 +400,8 @@ const App = {
             UI.showToast(CONFIG.messages.updateSuccess, 'success');
             UI.closeModal();
             
-            // Actualizar estadísticas (sin esperar)
-            setTimeout(() => {
-                if (!this.isRefreshingStats) {
-                    this.refreshStats().catch(err => console.error('Error updating stats:', err));
-                }
-            }, 500);
+            // Actualizar estadísticas
+            this.refreshStats();
             
         } catch (error) {
             console.error('Error updating inventory:', error);
@@ -461,38 +444,20 @@ const App = {
      * Refresca las estadísticas
      */
     async refreshStats() {
-        // Prevenir llamadas concurrentes
-        if (this.isRefreshingStats) {
-            console.log('⏳ Ya se están actualizando las estadísticas, ignorando nueva llamada');
-            return;
-        }
-        
-        this.isRefreshingStats = true;
         UI.showLoading('Actualizando estadísticas...');
         
         try {
-            // Usar timeout de 5 segundos para evitar que se quede esperando
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout al actualizar estadísticas')), 5000)
-            );
-            
-            const refreshPromise = SheetsAPI.refresh();
-            
-            // Usar la que se resuelva primero (actualización o timeout)
-            await Promise.race([refreshPromise, timeoutPromise]);
-            
+            await SheetsAPI.refresh();
             const stats = SheetsAPI.getStats();
             UI.updateStats(stats);
             UI.showToast('Estadísticas actualizadas', 'success');
         } catch (error) {
             console.error('Error refreshing stats:', error);
-            // Usar datos locales sin hacer fetch
+            // Intentar con datos locales
             const stats = SheetsAPI.getStats();
             UI.updateStats(stats);
-            UI.showToast('Estadísticas actualizadas (sin conexión)', 'info');
         } finally {
             UI.hideLoading();
-            this.isRefreshingStats = false;
         }
     },
 
