@@ -233,47 +233,145 @@ const BarcodeScanner = {
         }
 
         try {
-            console.log('🔍 Analizando captura...');
+            console.log('🔍 Analizando captura...', captureInfo.width, 'x', captureInfo.height);
+            
+            // Verificar si hay suficiente contenido
+            const contrastScore = this.calculateImageContrast(captureInfo.imageData);
+            console.log(`📊 Contraste de imagen: ${contrastScore.toFixed(2)}`);
+            
             const strategies = [
                 { name: 'Original', fn: (data) => data },
+                { name: 'Contrast Leve', fn: (data) => this.enhanceImage(this.copyImageData(data), 1.5) },
+                { name: 'Contrast Med', fn: (data) => this.enhanceImage(this.copyImageData(data), 2.0) },
                 { name: 'Contrast Agr.', fn: (data) => this.enhanceImageAggressive(this.copyImageData(data)) },
-                { name: 'Binarización', fn: (data) => this.binarizeImage(this.copyImageData(data)) },
+                { name: 'Binarización T80', fn: (data) => this.binarizeImage(this.copyImageData(data), 80) },
+                { name: 'Binarización T100', fn: (data) => this.binarizeImage(this.copyImageData(data), 100) },
+                { name: 'Binarización T130', fn: (data) => this.binarizeImage(this.copyImageData(data), 130) },
+                { name: 'Binarización T150', fn: (data) => this.binarizeImage(this.copyImageData(data), 150) },
+                { name: 'Binarización T170', fn: (data) => this.binarizeImage(this.copyImageData(data), 170) },
                 { name: 'Invertir', fn: (data) => this.invertImage(this.copyImageData(data)) },
+                { name: 'Inv+Bin130', fn: (data) => this.binarizeImage(this.invertImage(this.copyImageData(data)), 130) },
+                { name: 'Invertir+Contrast', fn: (data) => this.enhanceImageAggressive(this.invertImage(this.copyImageData(data))) },
                 { name: 'EdgeDetect', fn: (data) => this.applyEdgeDetection(this.copyImageData(data)) },
-                { name: 'Adaptativo', fn: (data) => this.adaptiveThreshold(this.copyImageData(data)) }
+                { name: 'Adaptativo', fn: (data) => this.adaptiveThreshold(this.copyImageData(data)) },
+                { name: 'Dilate', fn: (data) => this.dilateImage(this.copyImageData(data)) },
+                { name: 'Erode', fn: (data) => this.erodeImage(this.copyImageData(data)) },
+                { name: 'Dilate+Bin', fn: (data) => this.binarizeImage(this.dilateImage(this.copyImageData(data)), 130) }
             ];
 
+            // Probar cada estrategia en ImageData completo
+            console.log(`📊 Probando ${strategies.length} estrategias...`);
+            
             for (let i = 0; i < strategies.length; i++) {
                 const strategy = strategies[i];
                 try {
                     let processed = strategy.fn(captureInfo.imageData);
-                    const result = this.multiFormatReader.decodeWithState(processed);
-                    if (result) {
-                        const code = result.getText();
-                        console.log(`✅ DETECTADO con ${strategy.name}: ${code}`);
-                        this.handleDetection(code);
-                        this.drawScanBox(true, `${strategy.name}`);
-                        return {
-                            code: code,
-                            format: result.getBarcodeFormat(),
-                            strategy: strategy.name,
-                            timestamp: captureInfo.timestamp
-                        };
+                    
+                    // Intentar decode directamente en ImageData
+                    try {
+                        const result = this.multiFormatReader.decodeWithState(processed);
+                        if (result) {
+                            const code = result.getText();
+                            console.log(`✅ DETECTADO con ${strategy.name}: ${code}`);
+                            this.handleDetection(code);
+                            this.drawScanBox(true, `✅ ${strategy.name}`);
+                            return {
+                                code: code,
+                                format: result.getBarcodeFormat(),
+                                strategy: strategy.name,
+                                timestamp: captureInfo.timestamp
+                            };
+                        }
+                    } catch (zxingErr) {
+                        // Continuar con siguiente estrategia
                     }
+                    
+                    console.log(`⚠️ ${strategy.name}: sin resultado`);
                 } catch (e) {
-                    // Continuar
+                    console.log(`❌ ${strategy.name}: error -`, e.message);
                 }
+            }
+
+            // Intentar también con región central si existe
+            try {
+                const centralRegion = this.extractCentralRegion(captureInfo.imageData);
+                if (centralRegion) {
+                    console.log('🎯 Intentando con región central...');
+                    
+                    for (let i = 0; i < Math.min(strategies.length, 8); i++) {
+                        const strategy = strategies[i];
+                        try {
+                            let processed = strategy.fn(this.copyImageData(centralRegion));
+                            
+                            try {
+                                const result = this.multiFormatReader.decodeWithState(processed);
+                                if (result) {
+                                    const code = result.getText();
+                                    console.log(`✅ DETECTADO con ${strategy.name} (región central): ${code}`);
+                                    this.handleDetection(code);
+                                    this.drawScanBox(true, `✅ ${strategy.name} 🎯`);
+                                    return {
+                                        code: code,
+                                        format: result.getBarcodeFormat(),
+                                        strategy: strategy.name + ' (central)',
+                                        timestamp: captureInfo.timestamp
+                                    };
+                                }
+                            } catch (zxingErr) {
+                                // Continuar
+                            }
+                        } catch (e) {
+                            // Continuar
+                        }
+                    }
+                }
+            } catch (err) {
+                console.log('No se pudo procesar región central:', err.message);
             }
 
             console.log('❌ No se detectó con ninguna estrategia');
             if (showDebug) {
-                this.drawScanBox(false, 'Sin detección');
+                this.drawScanBox(false, `Sin detección (${strategies.length * 2} intentos, contraste: ${contrastScore.toFixed(1)})`);
             }
             return null;
         } catch (error) {
             console.error('Error analizando captura:', error);
             return null;
         }
+    },
+
+    /**
+     * Calcula el score de contraste de una imagen
+     */
+    calculateImageContrast(imageData) {
+        const data = imageData.data;
+        let sum = 0;
+        let count = 0;
+        
+        // Calcular luminancia promedio
+        let avgLuminance = 0;
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const luminance = r * 0.299 + g * 0.587 + b * 0.114;
+            avgLuminance += luminance;
+            count++;
+        }
+        avgLuminance /= count;
+        
+        // Calcular desviación estándar (contraste)
+        count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const luminance = r * 0.299 + g * 0.587 + b * 0.114;
+            sum += Math.pow(luminance - avgLuminance, 2);
+            count++;
+        }
+        
+        return Math.sqrt(sum / count);
     },
 
     /**
@@ -533,6 +631,30 @@ const BarcodeScanner = {
     },
 
     /**
+     * Mejora la imagen con contraste configurable
+     */
+    enhanceImage(imageData, contrast = 1.5) {
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            
+            const gray = (r * 0.299 + g * 0.587 + b * 0.114);
+            
+            // Aplicar contraste
+            const enhanced = Math.max(0, Math.min(255, (gray - 128) * contrast + 128));
+            
+            data[i] = enhanced;
+            data[i + 1] = enhanced;
+            data[i + 2] = enhanced;
+        }
+        
+        return imageData;
+    },
+
+    /**
      * Mejora la imagen de forma agresiva
      */
     enhanceImageAggressive(imageData) {
@@ -562,9 +684,9 @@ const BarcodeScanner = {
     },
 
     /**
-     * Binarización simple
+     * Binarización con threshold configurable
      */
-    binarizeImage(imageData) {
+    binarizeImage(imageData, threshold = 130) {
         const data = imageData.data;
         
         for (let i = 0; i < data.length; i += 4) {
@@ -573,7 +695,7 @@ const BarcodeScanner = {
             const b = data[i + 2];
             
             const gray = (r * 0.299 + g * 0.587 + b * 0.114);
-            const value = gray > 130 ? 255 : 0;
+            const value = gray > threshold ? 255 : 0;
             
             data[i] = value;
             data[i + 1] = value;
@@ -595,6 +717,78 @@ const BarcodeScanner = {
             data[i + 2] = 255 - data[i + 2];
         }
         
+        return imageData;
+    },
+
+    /**
+     * Dilatación morfológica
+     */
+    dilateImage(imageData) {
+        const data = imageData.data;
+        const width = imageData.width;
+        const height = imageData.height;
+        const output = new Uint8ClampedArray(data);
+        
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                let hasWhite = false;
+                
+                // Verificar vecindario 3x3
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const idx = ((y + dy) * width + (x + dx)) * 4;
+                        if (data[idx] === 255) {
+                            hasWhite = true;
+                            break;
+                        }
+                    }
+                    if (hasWhite) break;
+                }
+                
+                const centerIdx = (y * width + x) * 4;
+                output[centerIdx] = hasWhite ? 255 : 0;
+                output[centerIdx + 1] = hasWhite ? 255 : 0;
+                output[centerIdx + 2] = hasWhite ? 255 : 0;
+            }
+        }
+        
+        imageData.data.set(output);
+        return imageData;
+    },
+
+    /**
+     * Erosión morfológica
+     */
+    erodeImage(imageData) {
+        const data = imageData.data;
+        const width = imageData.width;
+        const height = imageData.height;
+        const output = new Uint8ClampedArray(data);
+        
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                let allWhite = true;
+                
+                // Verificar vecindario 3x3
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const idx = ((y + dy) * width + (x + dx)) * 4;
+                        if (data[idx] !== 255) {
+                            allWhite = false;
+                            break;
+                        }
+                    }
+                    if (!allWhite) break;
+                }
+                
+                const centerIdx = (y * width + x) * 4;
+                output[centerIdx] = allWhite ? 255 : 0;
+                output[centerIdx + 1] = allWhite ? 255 : 0;
+                output[centerIdx + 2] = allWhite ? 255 : 0;
+            }
+        }
+        
+        imageData.data.set(output);
         return imageData;
     },
 

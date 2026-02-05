@@ -297,8 +297,17 @@ const App = {
         frameEl.innerHTML = `
             <img src="${capture.base64}" alt="Captura ${new Date(capture.timestamp).toLocaleTimeString()}" />
             <div class="frame-info">${new Date(capture.timestamp).toLocaleTimeString()}</div>
-            <button class="frame-delete" title="Eliminar">✕</button>
+            <div class="frame-actions">
+                <button class="frame-download" title="Descargar">⬇️</button>
+                <button class="frame-delete" title="Eliminar">✕</button>
+            </div>
         `;
+
+        // Evento click para descargar
+        frameEl.querySelector('.frame-download').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.downloadFrame(capture);
+        });
 
         // Evento click para eliminar
         frameEl.querySelector('.frame-delete').addEventListener('click', (e) => {
@@ -324,6 +333,24 @@ const App = {
         }
 
         console.log('📷 Captura agregada a la galería. Total:', framesList.children.length);
+    },
+
+    /**
+     * Descarga una captura como imagen
+     */
+    downloadFrame(capture) {
+        try {
+            const link = document.createElement('a');
+            link.href = capture.base64;
+            link.download = `frame-${new Date(capture.timestamp).getTime()}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            UI.showToast('✅ Frame descargado', 'success');
+        } catch (error) {
+            console.error('Error descargando frame:', error);
+            UI.showToast('Error: ' + error.message, 'error');
+        }
     },
 
     /**
