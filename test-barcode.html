@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Code 128 Barcode - Quagga.js</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .barcode-display {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #barcode {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .barcode-info {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .barcode-info strong {
+            color: #333;
+        }
+
+        .barcode-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .camera-container {
+            position: relative;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            aspect-ratio: 16 / 9;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .controls.full {
+            grid-template-columns: 1fr;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-secondary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .result {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .result.success {
+            display: block;
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .result.error {
+            display: block;
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        .result.info {
+            display: block;
+            background: #d1ecf1;
+            border-color: #0c5460;
+            color: #0c5460;
+        }
+
+        .result h3 {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .result p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .status {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .status.active {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .instructions {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .instructions h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #666;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        .instructions strong {
+            color: #333;
+        }
+
+        .code-display {
+            background: #f0f4ff;
+            border: 1px solid #cce0ff;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            .controls {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Quagga.js Code 128 Detection</h1>
+        <p class="subtitle">Prueba de detección de código de barras Code 128 con Quagga.js</p>
+
+        <!-- Sección 1: Generar y mostrar código de barras -->
+        <div class="section">
+            <div class="section-title">📦 Código de Barras a Probar</div>
+            
+            <div class="barcode-info">
+                <p><strong>Código:</strong> <span id="codeValue">740899503754</span></p>
+                <p><strong>Formato:</strong> Code 128</p>
+                <p><strong>Descripción:</strong> Este es el código que necesitas detectar</p>
+            </div>
+
+            <div class="barcode-display">
+                <svg id="barcode"></svg>
+            </div>
+
+            <div class="controls full">
+                <button class="btn-primary" onclick="generateNewBarcode()">🔄 Generar Nuevo Código</button>
+            </div>
+        </div>
+
+        <!-- Sección 2: Instrucciones -->
+        <div class="section">
+            <div class="section-title">📋 Instrucciones</div>
+            <div class="instructions">
+                <h4>Cómo probar la detección:</h4>
+                <ol>
+                    <li>Haz clic en <strong>"▶️ Iniciar Cámara"</strong> abajo</li>
+                    <li><strong>Apunta tu cámara</strong> hacia el código de barras mostrado arriba</li>
+                    <li>Quagga.js intentará detectar el código automáticamente</li>
+                    <li>Si lo detecta, verás un <strong>mensaje de éxito</strong> verde</li>
+                    <li>También puedes usar <strong>"📸 Capturar Frame"</strong> para análisis manual</li>
+                </ol>
+                <p style="margin-top: 15px;"><strong>💡 Tip:</strong> Asegúrate de que el código esté bien iluminado y visible en la cámara</p>
+            </div>
+        </div>
+
+        <!-- Sección 3: Scanner -->
+        <div class="section">
+            <div class="section-title">🎥 Scanner en Vivo</div>
+            
+            <div class="camera-container" id="cameraContainer" style="display: none;">
+                <video id="video"></video>
+            </div>
+
+            <div class="controls">
+                <button class="btn-success" id="btnStart" onclick="startCamera()">▶️ Iniciar Cámara</button>
+                <button class="btn-danger" id="btnStop" onclick="stopCamera()" disabled>⏹️ Detener</button>
+            </div>
+
+            <div class="controls full">
+                <button class="btn-primary" id="btnCapture" onclick="captureAndAnalyze()" disabled>📸 Capturar Frame</button>
+            </div>
+
+            <div class="status" id="status">Esperando instrucciones...</div>
+        </div>
+
+        <!-- Resultado -->
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        let quaggaInitialized = false;
+        let cameraActive = false;
+
+        // Generar código de barras
+        function generateNewBarcode() {
+            const code = Math.floor(Math.random() * 9000000000000) + 1000000000000;
+            document.getElementById('codeValue').textContent = code;
+            JsBarcode("#barcode", code.toString(), {
+                format: "CODE128",
+                width: 2,
+                height: 50,
+                displayValue: true
+            });
+        }
+
+        // Inicializar la página
+        window.addEventListener('load', () => {
+            console.log('✅ Página cargada');
+            console.log('Quagga disponible:', typeof Quagga !== 'undefined');
+            console.log('JsBarcode disponible:', typeof JsBarcode !== 'undefined');
+            
+            // Generar código inicial
+            generateNewBarcode();
+        });
+
+        // Iniciar cámara
+        async function startCamera() {
+            try {
+                updateStatus('⏳ Iniciando cámara...', false);
+                document.getElementById('btnStart').disabled = true;
+
+                // Mostrar container
+                const container = document.getElementById('cameraContainer');
+                container.style.display = 'block';
+
+                if (!quaggaInitialized) {
+                    initQuagga();
+                } else {
+                    Quagga.start();
+                }
+
+                setTimeout(() => {
+                    updateStatus('🟢 Escaneando... Apunta al código de barras', true);
+                    document.getElementById('btnStop').disabled = false;
+                    document.getElementById('btnCapture').disabled = false;
+                    cameraActive = true;
+                }, 1000);
+
+            } catch (error) {
+                updateResult('error', 'Error al iniciar cámara', error.message);
+                updateStatus('❌ Error al iniciar cámara', false);
+                document.getElementById('btnStart').disabled = false;
+            }
+        }
+
+        // Detener cámara
+        function stopCamera() {
+            try {
+                if (Quagga.initialized) {
+                    Quagga.stop();
+                }
+                cameraActive = false;
+                document.getElementById('btnStart').disabled = false;
+                document.getElementById('btnStop').disabled = true;
+                document.getElementById('btnCapture').disabled = true;
+                updateStatus('⏹️ Cámara detenida', false);
+            } catch (error) {
+                console.error('Error deteniendo cámara:', error);
+            }
+        }
+
+        // Inicializar Quagga
+        function initQuagga() {
+            if (quaggaInitialized) return;
+
+            console.log('🔧 Inicializando Quagga.js...');
+
+            Quagga.init({
+                inputStream: {
+                    type: 'LiveStream',
+                    target: document.querySelector('#cameraContainer'),
+                    constraints: {
+                        width: 1280,
+                        height: 720,
+                        facingMode: 'environment'
+                    }
+                },
+                decoder: {
+                    readers: [
+                        'code_128_reader',
+                        'ean_reader',
+                        'ean_8_reader',
+                        'code_39_reader',
+                        'code_93_reader'
+                    ],
+                    debug: {
+                        showCanvas: false,
+                        showPatternB: false,
+                        showPatternA: false,
+                        showLinesPos: false
+                    }
+                },
+                locator: {
+                    halfSample: true,
+                    patchSize: 'medium'
+                },
+                numOfWorkers: 4,
+                frequency: 10
+            }, (err) => {
+                if (err) {
+                    console.error('❌ Error inicializando Quagga:', err);
+                    updateResult('error', 'Error inicializando Quagga', err.message);
+                    return;
+                }
+
+                console.log('✅ Quagga inicializado correctamente');
+                quaggaInitialized = true;
+
+                // Event listeners
+                Quagga.onDetected((result) => {
+                    if (result && result.codeResult) {
+                        const code = result.codeResult.code;
+                        console.log(`✅ ¡DETECTADO! ${result.codeResult.format}: ${code}`);
+                        updateResult('success', '✅ ¡Código Detectado!', `
+                            <p><strong>Código:</strong> ${code}</p>
+                            <p><strong>Formato:</strong> ${result.codeResult.format}</p>
+                            <p><strong>Confianza:</strong> ${(result.codeResult.confidence * 100).toFixed(0)}%</p>
+                        `);
+                    }
+                });
+
+                Quagga.onProcessed((result) => {
+                    const drawingCtx = Quagga.canvas.ctx.overlay;
+                    const drawingCanvas = Quagga.canvas.dom.overlay;
+
+                    if (result === null) {
+                        return;
+                    }
+
+                    // Dibujar boxeo
+                    if (result.boxes) {
+                        drawingCtx.clearRect(0, 0, parseInt(drawingCanvas.getAttribute("width")), parseInt(drawingCanvas.getAttribute("height")));
+                        result.boxes.forEach((box) => {
+                            Quagga.ImageDebug.drawPath(box, { x: 0, y: 1 }, drawingCtx);
+                        });
+                    }
+                });
+
+                Quagga.start();
+                console.log('🟢 Quagga escaneando...');
+            });
+        }
+
+        // Capturar y analizar frame
+        async function captureAndAnalyze() {
+            try {
+                updateStatus('📸 Capturando frame...', false);
+                console.log('Intentando capturar frame manualmente...');
+
+                // Crear canvas desde video
+                const videoElement = document.querySelector('#cameraContainer video');
+                if (!videoElement || videoElement.readyState !== 4) {
+                    updateResult('error', 'Error', 'El video no está listo');
+                    return;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(videoElement, 0, 0);
+
+                // Decodificar con Quagga
+                console.log('Decodificando...');
+                Quagga.decodeSingle({
+                    src: canvas.toDataURL('image/jpeg'),
+                    num_of_workers: 1,
+                    worker: {
+                        ImageSrcType: 'canvas',
+                        patch: {
+                            x: 0,
+                            y: 0
+                        }
+                    }
+                }, function (result) {
+                    if (result && result.codeResult) {
+                        const code = result.codeResult.code;
+                        console.log(`✅ ¡DETECTADO en captura! ${result.codeResult.format}: ${code}`);
+                        updateResult('success', '✅ ¡Código Detectado en Captura!', `
+                            <p><strong>Código:</strong> ${code}</p>
+                            <p><strong>Formato:</strong> ${result.codeResult.format}</p>
+                        `);
+                        updateStatus('✅ Código detectado', true);
+                    } else {
+                        console.log('❌ No se detectó código en el frame');
+                        updateResult('info', 'ℹ️ No se detectó código', 'Intenta acercarte más o cambiar el ángulo');
+                        updateStatus('⚠️ No se detectó código', false);
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error capturando:', error);
+                updateResult('error', 'Error', error.message);
+                updateStatus('❌ Error capturando', false);
+            }
+        }
+
+        // Actualizar status
+        function updateStatus(message, active = false) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = active ? 'status active' : 'status';
+        }
+
+        // Actualizar resultado
+        function updateResult(type, title, message) {
+            const result = document.getElementById('result');
+            result.className = `result ${type}`;
+            result.innerHTML = `<h3>${title}</h3><p>${message}</p>`;
+        }
+
+        console.log('🎯 Script cargado y listo para probar');
+    </script>
+</body>
+</html>
