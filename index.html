@@ -15,20 +15,26 @@
         <header class="header">
             <h1>📦 Sistema de Inventario</h1>
             <div class="user-info" id="userInfo">
+                <span>👤</span>
                 <span id="userName">No conectado</span>
             </div>
         </header>
 
         <!-- Pantalla de Login -->
         <section id="loginSection" class="section">
-            <div class="card">
-                <h2>🔐 Iniciar Sesión</h2>
-                <p style="color: #666; margin-bottom: 1rem;">Ingrese su nombre para comenzar a inventariar</p>
-                <div class="form-group">
-                    <label for="operatorName">Nombre del Operador:</label>
-                    <input type="text" id="operatorName" placeholder="Ingrese su nombre" required autofocus>
+            <div class="card" style="margin-top: 2rem;">
+                <div style="text-align: center; margin-bottom: 1.5rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📦</div>
+                    <h2>Sistema de Inventario</h2>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Ingrese su nombre para comenzar</p>
                 </div>
-                <button id="btnConnect" class="btn btn-primary" style="width: 100%;">Conectar</button>
+                <div class="form-group">
+                    <label for="operatorName">👤 Nombre del Operador:</label>
+                    <input type="text" id="operatorName" placeholder="Ej: Juan Pérez" required autofocus>
+                </div>
+                <button id="btnConnect" class="btn btn-primary" style="width: 100%; font-size: 1.05rem; padding: 1rem;">
+                    🚀 Conectar
+                </button>
             </div>
         </section>
 
