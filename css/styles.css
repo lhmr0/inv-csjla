@@ -44,6 +44,8 @@ body {
     margin: 0 auto;
     padding: 0;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Header */
@@ -80,7 +82,7 @@ body {
     padding: 1rem;
 }
 
-.hidden {
+.section.hidden {
     display: none !important;
 }
 
@@ -94,11 +96,41 @@ body {
     border: 1px solid var(--border-color);
     transition: all 0.3s ease;
     animation: slideUp 0.4s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary-color), #cbd5e1);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.card:hover::before {
+    opacity: 1;
 }
 
 .card:hover {
     box-shadow: var(--shadow-hover);
     transform: translateY(-1px);
+}
+
+.login-card {
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e5e7eb;
+}
+
+.login-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 @keyframes slideUp {
@@ -118,6 +150,25 @@ body {
     font-weight: 700;
     font-size: 1.25rem;
     letter-spacing: -0.3px;
+    position: relative;
+}
+
+.card h3::before {
+    content: '';
+    position: absolute;
+    left: -1.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 1.5rem;
+    background: var(--primary-color);
+    border-radius: 2px;
+}
+
+@media (max-width: 480px) {
+    .card h3::before {
+        display: none;
+    }
 }
 
 /* Forms */
@@ -274,12 +325,29 @@ body {
     transition: all 0.3s ease;
     white-space: nowrap;
     font-family: inherit;
+    position: relative;
+}
+
+.tab::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: transparent;
+    border-radius: 2px;
+    transition: background 0.3s ease;
 }
 
 .tab.active {
     background: var(--primary-color);
     color: white;
     box-shadow: 0 2px 8px rgba(30, 41, 59, 0.15);
+}
+
+.tab.active::after {
+    background: white;
 }
 
 .tab:hover:not(.active) {
@@ -290,8 +358,6 @@ body {
 .tab-content {
     padding: 0 1rem 1rem;
 }
-
-/* Scanner */
 #scannerContainer {
     position: relative;
     width: 100%;
@@ -413,11 +479,14 @@ body {
     padding: 1rem;
     border-bottom: 1px solid var(--border-color);
     gap: 0.75rem;
-    transition: background 0.3s ease;
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
 }
 
 .history-item:hover {
-    background: var(--background-color);
+    background: var(--background-dark);
+    border-left-color: var(--primary-color);
+    padding-left: calc(1rem - 3px);
 }
 
 .history-item:last-child {
@@ -488,6 +557,20 @@ body {
     border: 1px solid var(--border-color);
     transition: all 0.3s ease;
     animation: slideUp 0.4s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .stat-card:hover {
@@ -496,12 +579,18 @@ body {
     border-color: var(--primary-color);
 }
 
+.stat-card:hover::before {
+    opacity: 0.05;
+}
+
 .stat-number {
     display: block;
     font-size: 2.25rem;
     font-weight: 800;
     color: var(--primary-color);
     letter-spacing: -1px;
+    position: relative;
+    z-index: 1;
 }
 
 .stat-label {
@@ -510,6 +599,8 @@ body {
     font-weight: 600;
     margin-top: 0.5rem;
     letter-spacing: -0.2px;
+    position: relative;
+    z-index: 1;
 }
 
 /* Modal */
@@ -547,8 +638,19 @@ body {
     overflow-y: auto;
     position: relative;
     animation: modalSlideIn 0.3s ease;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
     border: 1px solid var(--border-color);
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 @keyframes modalSlideIn {
@@ -587,8 +689,6 @@ body {
 #modalBody {
     padding: 1.5rem;
 }
-
-/* Product Info en Modal */
 .product-info {
     margin-bottom: 1.75rem;
 }
