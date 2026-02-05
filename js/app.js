@@ -179,19 +179,24 @@ const App = {
                 return;
             }
             
+            UI.showLoading('Inicializando cámara...');
+            
             // Inicializar escáner con callback
             await BarcodeScanner.init((code, format) => {
+                console.log('🎯 Código detectado en tiempo real:', code, format);
                 this.handleCodeDetected(code, format);
             });
             
             console.log('🎬 Iniciando cámara...');
             await BarcodeScanner.start();
             UI.updateScannerControls(true);
-            UI.showToast('Cámara iniciada correctamente', 'success');
-            console.log('✅ Cámara lista para escanear');
+            UI.hideLoading();
+            UI.showToast('✅ Cámara lista - Acerca el código de barras', 'success');
+            console.log('✅ Cámara activa y escaneando en vivo');
             
         } catch (error) {
             console.error('❌ Error al iniciar scanner:', error);
+            UI.hideLoading();
             UI.showToast(error.message || CONFIG.messages.cameraError, 'error');
             UI.updateScannerControls(false);
         }
@@ -307,8 +312,16 @@ const App = {
      * @param {string} format - Formato del código
      */
     async handleCodeDetected(code, format) {
-        console.log('Código detectado:', code, format);
+        if (!code || code.trim() === '') {
+            console.warn('Código vacío detectado');
+            return;
+        }
+
+        console.log('✅ CÓDIGO DETECTADO EN VIVO:', code, 'Formato:', format);
+        UI.showToast(`📦 Código detectado: ${code}`, 'info');
         UI.showLastScanned(code);
+        
+        // Buscar producto
         await this.searchAndShowProduct(code);
     },
 

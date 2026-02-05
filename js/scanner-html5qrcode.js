@@ -10,7 +10,7 @@ const BarcodeScanner = {
     onDetected: null,
     lastDetectedCode: null,
     lastDetectedTime: 0,
-    debounceTime: 2000,
+    debounceTime: 1500,  // Reducido de 2000 a 1500ms para detección más rápida
     devices: [],
     currentDeviceIndex: 0,
     videoElement: null,
@@ -124,20 +124,28 @@ const BarcodeScanner = {
 
             this.isRunning = true;
 
-            this.codeReader.decodeFromVideoDevice(
+            // Usar decodeFromVideoDevice con callback continuo
+            const decodePromise = this.codeReader.decodeFromVideoDevice(
                 deviceId,
                 this.videoElement,
                 (result, error) => {
-                    if (result) {
+                    if (result && result.getText()) {
+                        console.log('✅ Código detectado en tiempo real:', result.getText());
                         this.handleDetection(result.getText());
                     }
-                    if (error && !(error instanceof ZXing.NotFoundException)) {
-                        console.warn('Error en decoding:', error.message);
+                    // Solo loguear errores que no sean NotFoundException
+                    if (error && error.name !== 'NotFoundException') {
+                        console.debug('Info decoding:', error.message);
                     }
                 }
             );
 
-            console.log('✅ Escaneo iniciado correctamente');
+            // Manejar promesa rechazada
+            decodePromise.catch(err => {
+                console.warn('Error en promesa del scanner:', err.message);
+            });
+
+            console.log('✅ Escaneo iniciado correctamente - esperando detección');
             return true;
         } catch (error) {
             console.error('❌ Error iniciando scanner:', error);
@@ -151,6 +159,10 @@ const BarcodeScanner = {
      * @param {string} code - Código detectado
      */
     handleDetection(code) {
+        if (!code || code.trim() === '') {
+            return;
+        }
+
         const now = Date.now();
 
         // Debounce: evitar múltiples detecciones del mismo código
@@ -161,19 +173,60 @@ const BarcodeScanner = {
         this.lastDetectedCode = code;
         this.lastDetectedTime = now;
 
-        console.log('✅ Código detectado:', code);
+        console.log('✅ ¡CÓDIGO DETECTADO EN VIVO!', code);
 
         // Vibrar para feedback (si está disponible)
-        if (navigator.vibrate) {
-            navigator.vibrate(100);
+        try {
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);  // Vibración de confirmación
+            }
+        } catch (e) {
+            console.debug('Vibración no disponible');
         }
 
         // Reproducir sonido de escaneo
         this.playBeep();
 
+        // Agregar feedback visual
+        this.addDetectionFlash();
+
         // Llamar al callback
         if (this.onDetected) {
-            this.onDetected(code, 'QR/Barcode');
+            try {
+                this.onDetected(code, 'Barcode/QR');
+            } catch (err) {
+                console.error('Error en callback de detección:', err);
+            }
+        }
+    },
+
+    /**
+     * Agrega un flash visual cuando detecta un código
+     */
+    addDetectionFlash() {
+        if (!this.videoElement) return;
+        
+        try {
+            // Crear overlay flash
+            const flash = document.createElement('div');
+            flash.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(6, 182, 212, 0.3);
+                pointer-events: none;
+                z-index: 500;
+                animation: flashAnimation 0.4s ease-out;
+            `;
+            document.body.appendChild(flash);
+            
+            setTimeout(() => {
+                flash.remove();
+            }, 400);
+        } catch (err) {
+            console.debug('Flash visual no disponible');
         }
     },
 

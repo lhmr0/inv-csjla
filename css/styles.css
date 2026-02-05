@@ -401,6 +401,17 @@ input[type="file"] {
     }
 }
 
+@keyframes flashAnimation {
+    0% {
+        opacity: 0.8;
+        background: rgba(6, 182, 212, 0.5);
+    }
+    100% {
+        opacity: 0;
+        background: rgba(6, 182, 212, 0);
+    }
+}
+
 .hidden {
     display: none !important;
 }
