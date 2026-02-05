@@ -10,10 +10,12 @@ const BarcodeScanner = {
     onDetected: null,
     lastDetectedCode: null,
     lastDetectedTime: 0,
-    debounceTime: 1500,  // Reducido de 2000 a 1500ms para detección más rápida
+    debounceTime: 1500,
     devices: [],
     currentDeviceIndex: 0,
     videoElement: null,
+    scanningInterval: null,
+    currentStream: null,
 
     /**
      * Inicializa el escáner
@@ -84,73 +86,106 @@ const BarcodeScanner = {
         }
 
         try {
-            console.log('📹 Iniciando escaneo con ZXing...');
+            console.log('📹 Iniciando escaneo con polling manual...');
 
-            // Obtener dispositivos de cámara usando la API estándar
+            // Obtener dispositivos de cámara
             let devices = [];
             try {
                 devices = await navigator.mediaDevices.enumerateDevices();
                 devices = devices.filter(device => device.kind === 'videoinput');
             } catch (err) {
-                console.warn('No se pudo enumerar dispositivos, intentando acceder directo:', err);
-                // Fallback: intentar acceder directamente a la cámara
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                devices = [{ deviceId: stream.getVideoTracks()[0].getSettings().deviceId, label: 'Cámara Predeterminada' }];
-                stream.getTracks().forEach(track => track.stop());
+                console.warn('No se pudo enumerar dispositivos:', err);
+                throw err;
             }
             
             if (!devices || devices.length === 0) {
-                throw new Error('No se encontraron dispositivos de cámara. Verifica los permisos del navegador.');
+                throw new Error('No se encontraron dispositivos de cámara');
             }
 
             this.devices = devices;
+            this.currentDeviceIndex = 0;
+            const deviceId = devices[0].deviceId;
+            
+            console.log('📱 Cámaras disponibles:', devices.map(d => d.label || 'Cámara').join(', '));
+            console.log('✅ Usando:', devices[0].label || 'Cámara predeterminada');
 
-            const backCamera = this.devices.find(d =>
-                d.label && (
-                    d.label.toLowerCase().includes('back') ||
-                    d.label.toLowerCase().includes('rear') ||
-                    d.label.toLowerCase().includes('environment')
-                )
-            );
-
-            if (backCamera) {
-                this.currentDeviceIndex = this.devices.findIndex(d => d.deviceId === backCamera.deviceId);
-            } else {
-                this.currentDeviceIndex = 0;
-            }
-
-            const deviceId = this.devices[this.currentDeviceIndex].deviceId;
-            console.log('✅ Usando cámara:', this.devices[this.currentDeviceIndex].label || deviceId);
-
-            this.isRunning = true;
-
-            // Usar decodeFromVideoDevice con callback continuo
-            const decodePromise = this.codeReader.decodeFromVideoDevice(
-                deviceId,
-                this.videoElement,
-                (result, error) => {
-                    if (result && result.getText()) {
-                        console.log('✅ Código detectado en tiempo real:', result.getText());
-                        this.handleDetection(result.getText());
-                    }
-                    // Solo loguear errores que no sean NotFoundException
-                    if (error && error.name !== 'NotFoundException') {
-                        console.debug('Info decoding:', error.message);
-                    }
-                }
-            );
-
-            // Manejar promesa rechazada
-            decodePromise.catch(err => {
-                console.warn('Error en promesa del scanner:', err.message);
+            // Obtener stream de video
+            this.currentStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    deviceId: { exact: deviceId },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: false
             });
 
-            console.log('✅ Escaneo iniciado correctamente - esperando detección');
+            // Asignar stream al video element
+            this.videoElement.srcObject = this.currentStream;
+
+            // Esperar a que el video esté listo
+            await new Promise((resolve) => {
+                const checkReady = () => {
+                    if (this.videoElement.readyState === 4) {
+                        resolve();
+                    } else {
+                        this.videoElement.addEventListener('canplay', resolve, { once: true });
+                    }
+                };
+                checkReady();
+            });
+
+            console.log('✅ Video stream conectado');
+
+            this.isRunning = true;
+            
+            // Iniciar polling manual cada 200ms
+            this.scanningInterval = setInterval(() => {
+                this.scanFrame();
+            }, 200);
+
+            console.log('✅ Escaneo activo - Polling cada 200ms');
             return true;
+
         } catch (error) {
             console.error('❌ Error iniciando scanner:', error);
             this.isRunning = false;
-            throw new Error(CONFIG.messages.cameraError + ': ' + (error.message || error));
+            throw new Error('No se pudo acceder a la cámara: ' + (error.message || error));
+        }
+    },
+
+    /**
+     * Escanea un frame del video
+     */
+    scanFrame() {
+        if (!this.isRunning || !this.videoElement || this.videoElement.readyState !== 4) {
+            return;
+        }
+
+        try {
+            // Crear canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = this.videoElement.videoWidth;
+            canvas.height = this.videoElement.videoHeight;
+            
+            if (canvas.width === 0 || canvas.height === 0) {
+                return;
+            }
+
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(this.videoElement, 0, 0);
+
+            // Decodificar
+            try {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const result = this.multiFormatReader.decodeWithState(imageData);
+                if (result) {
+                    this.handleDetection(result.getText());
+                }
+            } catch (e) {
+                // Ignorar NotFoundException
+            }
+        } catch (error) {
+            // Silencioso
         }
     },
 
@@ -241,14 +276,30 @@ const BarcodeScanner = {
 
         try {
             console.log('🛑 Deteniendo escaneo...');
-            if (this.codeReader) {
-                this.codeReader.reset();
+            
+            // Detener polling
+            if (this.scanningInterval) {
+                clearInterval(this.scanningInterval);
+                this.scanningInterval = null;
             }
 
-            if (this.videoElement && this.videoElement.srcObject) {
-                const tracks = this.videoElement.srcObject.getTracks();
-                tracks.forEach(track => track.stop());
+            // Detener stream de video
+            if (this.currentStream) {
+                this.currentStream.getTracks().forEach(track => track.stop());
+                this.currentStream = null;
+            }
+
+            if (this.videoElement) {
                 this.videoElement.srcObject = null;
+            }
+
+            // Limpiar reader
+            if (this.codeReader) {
+                try {
+                    this.codeReader.reset();
+                } catch (e) {
+                    // Ignorar errores en reset
+                }
             }
 
             this.isRunning = false;
@@ -268,23 +319,16 @@ const BarcodeScanner = {
                 throw new Error('Solo hay una cámara disponible');
             }
 
+            // Detener escaneo actual
+            this.stop();
+
+            // Cambiar índice
             this.currentDeviceIndex = (this.currentDeviceIndex + 1) % this.devices.length;
             const deviceId = this.devices[this.currentDeviceIndex].deviceId;
             console.log('🔄 Cambiando a cámara:', this.devices[this.currentDeviceIndex].label || deviceId);
 
-            if (this.codeReader) {
-                this.codeReader.reset();
-            }
-
-            this.codeReader.decodeFromVideoDevice(
-                deviceId,
-                this.videoElement,
-                (result, error) => {
-                    if (result) {
-                        this.handleDetection(result.getText());
-                    }
-                }
-            );
+            // Iniciar escaneo con nueva cámara
+            await this.start();
 
             return true;
         } catch (error) {
