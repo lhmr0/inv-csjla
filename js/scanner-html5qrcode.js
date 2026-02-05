@@ -86,10 +86,24 @@ const BarcodeScanner = {
         try {
             console.log('📹 Iniciando escaneo con ZXing...');
 
-            this.devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-            if (!this.devices || this.devices.length === 0) {
-                throw new Error('No se encontraron dispositivos de cámara');
+            // Obtener dispositivos de cámara usando la API estándar
+            let devices = [];
+            try {
+                devices = await navigator.mediaDevices.enumerateDevices();
+                devices = devices.filter(device => device.kind === 'videoinput');
+            } catch (err) {
+                console.warn('No se pudo enumerar dispositivos, intentando acceder directo:', err);
+                // Fallback: intentar acceder directamente a la cámara
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                devices = [{ deviceId: stream.getVideoTracks()[0].getSettings().deviceId, label: 'Cámara Predeterminada' }];
+                stream.getTracks().forEach(track => track.stop());
             }
+            
+            if (!devices || devices.length === 0) {
+                throw new Error('No se encontraron dispositivos de cámara. Verifica los permisos del navegador.');
+            }
+
+            this.devices = devices;
 
             const backCamera = this.devices.find(d =>
                 d.label && (
@@ -116,6 +130,9 @@ const BarcodeScanner = {
                 (result, error) => {
                     if (result) {
                         this.handleDetection(result.getText());
+                    }
+                    if (error && !(error instanceof ZXing.NotFoundException)) {
+                        console.warn('Error en decoding:', error.message);
                     }
                 }
             );
