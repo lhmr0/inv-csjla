@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Overlay - Scanner v3.0</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #f5f5f5;
+            font-family: Arial, sans-serif;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+        
+        #scannerContainer {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        
+        #video {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        #scannerOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            cursor: crosshair;
+            z-index: 10;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            background: #06B6D4;
+            color: white;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #0891B2;
+        }
+        
+        button.stop {
+            background: #EF4444;
+        }
+        
+        button.stop:hover {
+            background: #DC2626;
+        }
+        
+        .debug-log {
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #333;
+        }
+        
+        .log-entry {
+            padding: 0.25rem 0;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test de Overlay - Scanner v3.0</h1>
+        
+        <div id="scannerContainer">
+            <video id="video" playsinline autoplay muted></video>
+            <canvas id="scannerOverlay"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button id="btnStart">▶️ Iniciar Cámara</button>
+            <button id="btnStop" class="stop" style="display:none;">⏹️ Detener</button>
+        </div>
+        
+        <h3>📝 Debug Log:</h3>
+        <div class="debug-log" id="debugLog"></div>
+    </div>
+
+    <script>
+        const debugLog = document.getElementById('debugLog');
+        let animationId = null;
+        let isRunning = false;
+
+        function log(message) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugLog.appendChild(entry);
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+
+        async function startCamera() {
+            try {
+                log('Iniciando cámara...');
+                
+                const video = document.getElementById('video');
+                const canvas = document.getElementById('scannerOverlay');
+                
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                
+                video.srcObject = stream;
+                
+                await new Promise(resolve => {
+                    video.onloadedmetadata = () => {
+                        video.play();
+                        log(`✅ Video cargado: ${video.videoWidth}x${video.videoHeight}`);
+                        resolve();
+                    };
+                });
+                
+                isRunning = true;
+                document.getElementById('btnStart').style.display = 'none';
+                document.getElementById('btnStop').style.display = 'inline-block';
+                
+                log('✅ Cámara iniciada correctamente');
+                drawOverlay();
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`);
+            }
+        }
+
+        function drawOverlay() {
+            if (!isRunning) return;
+            
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('scannerOverlay');
+            
+            if (video.readyState !== 4) {
+                animationId = requestAnimationFrame(drawOverlay);
+                return;
+            }
+            
+            const w = video.videoWidth;
+            const h = video.videoHeight;
+            
+            // Redimensionar canvas
+            canvas.width = w;
+            canvas.height = h;
+            
+            const ctx = canvas.getContext('2d', { alpha: true });
+            
+            if (!ctx) {
+                log('❌ No se pudo obtener contexto 2D');
+                return;
+            }
+            
+            // Limpiar
+            ctx.clearRect(0, 0, w, h);
+            
+            // Fondo oscuro
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, w, h);
+            
+            // Región de escaneo
+            const boxWidth = w * 0.8;
+            const boxHeight = h * 0.4;
+            const x = (w - boxWidth) / 2;
+            const y = (h - boxHeight) / 2;
+            
+            // Agujero (área clara)
+            ctx.clearRect(x, y, boxWidth, boxHeight);
+            
+            // Recuadro
+            ctx.strokeStyle = '#06B6D4';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#06B6D4';
+            ctx.shadowBlur = 10;
+            ctx.strokeRect(x, y, boxWidth, boxHeight);
+            ctx.shadowColor = 'transparent';
+            
+            // Esquinas
+            const cornerLen = 30;
+            ctx.lineWidth = 3;
+            
+            // Arriba-izquierda
+            ctx.beginPath();
+            ctx.moveTo(x, y + cornerLen);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x + cornerLen, y);
+            ctx.stroke();
+            
+            // Arriba-derecha
+            ctx.beginPath();
+            ctx.moveTo(x + boxWidth - cornerLen, y);
+            ctx.lineTo(x + boxWidth, y);
+            ctx.lineTo(x + boxWidth, y + cornerLen);
+            ctx.stroke();
+            
+            // Abajo-izquierda
+            ctx.beginPath();
+            ctx.moveTo(x, y + boxHeight - cornerLen);
+            ctx.lineTo(x, y + boxHeight);
+            ctx.lineTo(x + cornerLen, y + boxHeight);
+            ctx.stroke();
+            
+            // Abajo-derecha
+            ctx.beginPath();
+            ctx.moveTo(x + boxWidth - cornerLen, y + boxHeight);
+            ctx.lineTo(x + boxWidth, y + boxHeight);
+            ctx.lineTo(x + boxWidth, y + boxHeight - cornerLen);
+            ctx.stroke();
+            
+            // Texto
+            ctx.fillStyle = '#06B6D4';
+            ctx.font = 'bold 18px Arial';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText('Coloca el código aquí', x + 15, y - 15);
+            
+            animationId = requestAnimationFrame(drawOverlay);
+        }
+
+        function stopCamera() {
+            isRunning = false;
+            const video = document.getElementById('video');
+            const stream = video.srcObject;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            document.getElementById('btnStart').style.display = 'inline-block';
+            document.getElementById('btnStop').style.display = 'none';
+            if (animationId) cancelAnimationFrame(animationId);
+            log('⏹️ Cámara detenida');
+        }
+
+        document.getElementById('btnStart').addEventListener('click', startCamera);
+        document.getElementById('btnStop').addEventListener('click', stopCamera);
+
+        log('🔍 Test de Overlay v3.0 cargado');
+        log('Haz clic en "Iniciar Cámara" para comenzar');
+    </script>
+</body>
+</html>

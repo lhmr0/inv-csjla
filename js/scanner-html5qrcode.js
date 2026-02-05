@@ -10,12 +10,13 @@ const BarcodeScanner = {
     onDetected: null,
     lastDetectedCode: null,
     lastDetectedTime: 0,
-    debounceTime: 800,  // Reducido a 800ms para mejor detección
+    debounceTime: 800,
     devices: [],
     currentDeviceIndex: 0,
     videoElement: null,
     scanningInterval: null,
     currentStream: null,
+    overlayCanvas: null,
 
     /**
      * Inicializa el escáner
@@ -33,9 +34,16 @@ const BarcodeScanner = {
 
         // Preparar contenedor y elemento de video
         const container = document.getElementById('video');
+        const overlayElement = document.getElementById('scannerOverlay');
         if (!container) {
             throw new Error('No se encontró el elemento contenedor del scanner');
         }
+        if (!overlayElement) {
+            throw new Error('No se encontró el canvas overlay');
+        }
+
+        this.overlayCanvas = overlayElement;
+        // NO almacenar overlayCtx aquí - se obtiene en drawScanBox() después de redimensionar
 
         container.innerHTML = '';
         const video = document.createElement('video');
@@ -162,7 +170,7 @@ const BarcodeScanner = {
     },
 
     /**
-     * Escanea un frame del video con pre-procesamiento
+     * Escanea un frame del video con enfoque en el centro
      */
     scanFrame() {
         if (!this.isRunning || !this.videoElement || this.videoElement.readyState !== 4) {
@@ -185,63 +193,319 @@ const BarcodeScanner = {
             // Obtener imagen original
             let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-            // Intentar decodificar imagen original
-            try {
-                const result = this.multiFormatReader.decodeWithState(imageData);
-                if (result) {
-                    this.handleDetection(result.getText());
-                    return;
-                }
-            } catch (e) {
-                // Continuar con pre-procesamiento
+            // PRIORIDAD 1: Intentar en región central (donde está el recuadro)
+            const centralRegion = this.extractCentralRegion(imageData);
+            
+            if (this.tryAllStrategies(centralRegion)) {
+                return;
             }
 
-            // Pre-procesamiento: Aumentar contraste para mejor detección de Code 128
-            imageData = this.enhanceImage(imageData);
-
-            // Intentar decodificar imagen mejorada
-            try {
-                const result = this.multiFormatReader.decodeWithState(imageData);
-                if (result) {
-                    this.handleDetection(result.getText());
-                    return;
-                }
-            } catch (e) {
-                // Ignorar - continuar siguiente frame
+            // PRIORIDAD 2: Si no funciona en centro, probar toda la imagen
+            if (this.tryAllStrategies(imageData)) {
+                return;
             }
+
+            // Dibujar área de escaneo (sin detección)
+            this.drawScanBox(false);
 
         } catch (error) {
-            // Silencioso
+            console.debug('Error en scanFrame:', error.message);
         }
     },
 
     /**
-     * Mejora la calidad de la imagen para detección de códigos de barras
+     * Extrae la región central (donde está el recuadro de escaneo)
      */
-    enhanceImage(imageData) {
+    extractCentralRegion(imageData) {
+        const width = imageData.width;
+        const height = imageData.height;
+        const regionWidth = Math.floor(width * 0.8);
+        const regionHeight = Math.floor(height * 0.4);
+        const startX = Math.floor((width - regionWidth) / 2);
+        const startY = Math.floor((height - regionHeight) / 2);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = regionWidth;
+        canvas.height = regionHeight;
+
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        
+        // Crear imageData para región
+        const regionImageData = ctx.createImageData(regionWidth, regionHeight);
+        const regionData = regionImageData.data;
+        const sourceData = imageData.data;
+
+        let regionIdx = 0;
+        for (let y = 0; y < regionHeight; y++) {
+            for (let x = 0; x < regionWidth; x++) {
+                const sourceIdx = ((startY + y) * width + (startX + x)) * 4;
+                regionData[regionIdx++] = sourceData[sourceIdx];     // R
+                regionData[regionIdx++] = sourceData[sourceIdx + 1]; // G
+                regionData[regionIdx++] = sourceData[sourceIdx + 2]; // B
+                regionData[regionIdx++] = sourceData[sourceIdx + 3]; // A
+            }
+        }
+
+        return regionImageData;
+    },
+
+    /**
+     * Intenta todas las estrategias de detección en un imageData dado
+     * Retorna true si detectó algo
+     */
+    tryAllStrategies(imageData) {
+        // Estrategia 1: Original
+        try {
+            const result = this.multiFormatReader.decodeWithState(imageData);
+            if (result) {
+                this.handleDetection(result.getText());
+                this.drawScanBox(true);
+                return true;
+            }
+        } catch (e) {}
+
+        // Estrategia 2: Contraste agresivo
+        let enhanced = this.enhanceImageAggressive(this.copyImageData(imageData));
+        try {
+            const result = this.multiFormatReader.decodeWithState(enhanced);
+            if (result) {
+                this.handleDetection(result.getText());
+                this.drawScanBox(true);
+                return true;
+            }
+        } catch (e) {}
+
+        // Estrategia 3: Binarización simple
+        let binarized = this.binarizeImage(this.copyImageData(imageData));
+        try {
+            const result = this.multiFormatReader.decodeWithState(binarized);
+            if (result) {
+                this.handleDetection(result.getText());
+                this.drawScanBox(true);
+                return true;
+            }
+        } catch (e) {}
+
+        // Estrategia 4: Invertir colores
+        let inverted = this.invertImage(this.copyImageData(imageData));
+        try {
+            const result = this.multiFormatReader.decodeWithState(inverted);
+            if (result) {
+                this.handleDetection(result.getText());
+                this.drawScanBox(true);
+                return true;
+            }
+        } catch (e) {}
+
+        // Estrategia 5: Edge detection
+        let edges = this.applyEdgeDetection(this.copyImageData(imageData));
+        try {
+            const result = this.multiFormatReader.decodeWithState(edges);
+            if (result) {
+                this.handleDetection(result.getText());
+                this.drawScanBox(true);
+                return true;
+            }
+        } catch (e) {}
+
+        // Estrategia 6: Umbral adaptativo
+        let adaptive = this.adaptiveThreshold(this.copyImageData(imageData));
+        try {
+            const result = this.multiFormatReader.decodeWithState(adaptive);
+            if (result) {
+                this.handleDetection(result.getText());
+                this.drawScanBox(true);
+                return true;
+            }
+        } catch (e) {}
+
+        return false;
+    },
+
+    /**
+     * Copia un ImageData
+     */
+    copyImageData(imageData) {
+        return new ImageData(
+            new Uint8ClampedArray(imageData.data),
+            imageData.width,
+            imageData.height
+        );
+    },
+
+    /**
+     * Dibuja el recuadro de escaneo
+     */
+    drawScanBox(detected = false) {
+        if (!this.overlayCanvas || !this.videoElement) {
+            console.debug('Overlay canvas o video no disponible');
+            return;
+        }
+
+        try {
+            const w = this.videoElement.videoWidth;
+            const h = this.videoElement.videoHeight;
+
+            if (w === 0 || h === 0) {
+                console.debug('Video size es 0');
+                return;
+            }
+
+            // Redimensionar canvas al tamaño exacto del video
+            this.overlayCanvas.width = w;
+            this.overlayCanvas.height = h;
+
+            // Obtener contexto (puede cambiar después de redimensionar)
+            const ctx = this.overlayCanvas.getContext('2d', { alpha: true });
+            if (!ctx) {
+                console.debug('No se pudo obtener contexto 2D del canvas');
+                return;
+            }
+
+            const boxWidth = w * 0.8;
+            const boxHeight = h * 0.4;
+            const x = (w - boxWidth) / 2;
+            const y = (h - boxHeight) / 2;
+
+            // Limpiar canvas completamente
+            ctx.clearRect(0, 0, w, h);
+
+            // Fondo oscuro fuera del recuadro
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, w, h);
+
+            // Área clara para escaneo (agujero en el fondo oscuro)
+            ctx.clearRect(x, y, boxWidth, boxHeight);
+
+            // Recuadro principal
+            const color = detected ? '#10B981' : '#06B6D4';
+            const lineWidth = detected ? 4 : 2;
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = detected ? 15 : 5;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.strokeRect(x, y, boxWidth, boxHeight);
+
+            // Esquinas decorativas
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            const cornerLen = 30;
+            const corners = [
+                { x: x, y: y }, // arriba-izq
+                { x: x + boxWidth, y: y }, // arriba-der
+                { x: x, y: y + boxHeight }, // abajo-izq
+                { x: x + boxWidth, y: y + boxHeight } // abajo-der
+            ];
+
+            corners.forEach((corner, i) => {
+                ctx.beginPath();
+                if (i === 0) { // arriba-izq
+                    ctx.moveTo(corner.x, corner.y + cornerLen);
+                    ctx.lineTo(corner.x, corner.y);
+                    ctx.lineTo(corner.x + cornerLen, corner.y);
+                } else if (i === 1) { // arriba-der
+                    ctx.moveTo(corner.x - cornerLen, corner.y);
+                    ctx.lineTo(corner.x, corner.y);
+                    ctx.lineTo(corner.x, corner.y + cornerLen);
+                } else if (i === 2) { // abajo-izq
+                    ctx.moveTo(corner.x, corner.y - cornerLen);
+                    ctx.lineTo(corner.x, corner.y);
+                    ctx.lineTo(corner.x + cornerLen, corner.y);
+                } else { // abajo-der
+                    ctx.moveTo(corner.x - cornerLen, corner.y);
+                    ctx.lineTo(corner.x, corner.y);
+                    ctx.lineTo(corner.x, corner.y - cornerLen);
+                }
+                ctx.stroke();
+            });
+
+            // Texto indicativo
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            if (detected) {
+                ctx.fillStyle = '#10B981';
+                ctx.font = 'bold 18px Arial, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText('✅ CÓDIGO DETECTADO', x + 15, y - 15);
+            } else {
+                ctx.fillStyle = '#06B6D4';
+                ctx.font = '14px Arial, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText('Coloca el código aquí', x + 15, y - 15);
+            }
+            
+            console.debug(`Overlay dibujado: ${detected ? 'DETECTADO' : 'BUSCANDO'}`);
+        } catch (e) {
+            console.error('Error dibujando scan box:', e);
+        }
+    },
+
+    /**
+     * Mejora la imagen de forma agresiva
+     */
+    enhanceImageAggressive(imageData) {
         const data = imageData.data;
         
-        // Aumentar contraste y brillo
         for (let i = 0; i < data.length; i += 4) {
             const r = data[i];
             const g = data[i + 1];
             const b = data[i + 2];
             
-            // Convertir a escala de grises
             const gray = (r + g + b) / 3;
             
-            // Aumentar contraste agresivamente
-            const contrast = 2.5;
-            const brightness = -50;
-            const enhanced = (gray - 128) * contrast + 128 + brightness;
+            // Contraste muy agresivo + brillo negativo
+            const contrast = 3.5;
+            const brightness = -100;
+            const enhanced = Math.max(0, Math.min(255, (gray - 128) * contrast + 128 + brightness));
             
-            // Aplicar umbral adaptativo (binarización)
+            // Binarización
             const value = enhanced > 128 ? 255 : 0;
             
             data[i] = value;
             data[i + 1] = value;
             data[i + 2] = value;
-            data[i + 3] = 255;
+        }
+        
+        return imageData;
+    },
+
+    /**
+     * Binarización simple
+     */
+    binarizeImage(imageData) {
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            
+            const gray = (r * 0.299 + g * 0.587 + b * 0.114);
+            const value = gray > 130 ? 255 : 0;
+            
+            data[i] = value;
+            data[i + 1] = value;
+            data[i + 2] = value;
+        }
+        
+        return imageData;
+    },
+
+    /**
+     * Invierte la imagen (blanco por negro)
+     */
+    invertImage(imageData) {
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = 255 - data[i];
+            data[i + 1] = 255 - data[i + 1];
+            data[i + 2] = 255 - data[i + 2];
         }
         
         return imageData;
@@ -578,5 +842,101 @@ const BarcodeScanner = {
             data[i + 2] = value;
         }
         return new ImageData(data, imageData.width, imageData.height);
+    },
+
+    /**
+     * Detección de bordes usando Sobel
+     */
+    applyEdgeDetection(imageData) {
+        const width = imageData.width;
+        const height = imageData.height;
+        const data = imageData.data;
+        const output = new Uint8ClampedArray(data.length);
+
+        // Kernel Sobel X
+        const sobelX = [
+            [-1, 0, 1],
+            [-2, 0, 2],
+            [-1, 0, 1]
+        ];
+
+        // Kernel Sobel Y
+        const sobelY = [
+            [-1, -2, -1],
+            [0, 0, 0],
+            [1, 2, 1]
+        ];
+
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                let gx = 0, gy = 0;
+
+                for (let ky = -1; ky <= 1; ky++) {
+                    for (let kx = -1; kx <= 1; kx++) {
+                        const idx = ((y + ky) * width + (x + kx)) * 4;
+                        const gray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+                        gx += gray * sobelX[ky + 1][kx + 1];
+                        gy += gray * sobelY[ky + 1][kx + 1];
+                    }
+                }
+
+                const magnitude = Math.sqrt(gx * gx + gy * gy);
+                const idx = (y * width + x) * 4;
+                const value = magnitude > 100 ? 255 : 0;
+
+                output[idx] = value;
+                output[idx + 1] = value;
+                output[idx + 2] = value;
+                output[idx + 3] = 255;
+            }
+        }
+
+        return new ImageData(output, width, height);
+    },
+
+    /**
+     * Umbral adaptativo (binarización local)
+     */
+    adaptiveThreshold(imageData) {
+        const width = imageData.width;
+        const height = imageData.height;
+        const data = imageData.data;
+        const output = new Uint8ClampedArray(data.length);
+        const blockSize = 25;
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                const r = data[idx];
+                const g = data[idx + 1];
+                const b = data[idx + 2];
+                const gray = (r + g + b) / 3;
+
+                // Calcular promedio local
+                let sum = 0;
+                let count = 0;
+                const half = Math.floor(blockSize / 2);
+
+                for (let dy = -half; dy <= half; dy++) {
+                    for (let dx = -half; dx <= half; dx++) {
+                        const ny = Math.min(Math.max(y + dy, 0), height - 1);
+                        const nx = Math.min(Math.max(x + dx, 0), width - 1);
+                        const nidx = (ny * width + nx) * 4;
+                        sum += (data[nidx] + data[nidx + 1] + data[nidx + 2]) / 3;
+                        count++;
+                    }
+                }
+
+                const avg = sum / count;
+                const value = gray > avg ? 255 : 0;
+
+                output[idx] = value;
+                output[idx + 1] = value;
+                output[idx + 2] = value;
+                output[idx + 3] = 255;
+            }
+        }
+
+        return new ImageData(output, width, height);
     }
 };
