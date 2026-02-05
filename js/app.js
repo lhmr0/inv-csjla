@@ -150,8 +150,29 @@ const App = {
         UI.showLoading('Conectando con Google Sheets...');
         
         try {
+            console.log('🔄 Intentando conectar con Google Sheets...');
             await SheetsAPI.init(data.sheetUrl, data.sheetName);
+            console.log('✅ Conexión exitosa con Google Sheets');
             
+        } catch (error) {
+            console.warn('⚠️ No se pudo conectar con Google Sheets. Modo offline disponible.');
+            console.warn('Detalles del error:', error.message);
+            
+            // Permitir continuar en modo offline si hay caché
+            const cached = Storage.getCachedData();
+            if (!cached || !cached.data || cached.data.length === 0) {
+                UI.hideLoading();
+                UI.showToast('❌ No se pudo conectar. Asegúrate que la hoja está compartida públicamente.', 'error');
+                console.error('Error crítico - sin datos cacheados:', error);
+                throw error;
+            }
+            
+            // Usar datos cacheados
+            console.log('📦 Usando datos cacheados');
+            UI.showToast('⚠️ Modo offline - Usando datos cacheados', 'warning');
+        }
+        
+        try {
             // Guardar datos
             this.operator = data.operator;
             Storage.setOperator(data.operator);
@@ -165,14 +186,15 @@ const App = {
             
             // Mostrar pantalla principal
             UI.showMain(data.operator);
-            UI.showToast('Conectado correctamente', 'success');
+            UI.showToast('✅ Sesión iniciada correctamente', 'success');
             
             // Actualizar estadísticas
             this.refreshStats();
             
         } catch (error) {
-            console.error('Error connecting:', error);
-            UI.showToast(error.message || CONFIG.messages.connectionError, 'error');
+            console.error('Error en login:', error);
+            UI.showToast('❌ Error al iniciar sesión: ' + (error.message || 'Error desconocido'), 'error');
+            UI.showLogin();
             throw error;
         } finally {
             UI.hideLoading();

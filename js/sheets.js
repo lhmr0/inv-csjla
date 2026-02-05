@@ -46,17 +46,32 @@ const SheetsAPI = {
         const csvUrl = `https://docs.google.com/spreadsheets/d/${this.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.sheetName)}`;
         
         try {
-            const response = await fetch(csvUrl);
+            console.log('🌐 Intentando obtener datos de Google Sheets...');
+            console.log('📍 URL:', csvUrl);
+            
+            const response = await fetch(csvUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'text/csv',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
             
             if (!response.ok) {
-                throw new Error('No se pudo acceder al documento. Verifique que esté compartido públicamente.');
+                throw new Error(`HTTP ${response.status}: No se pudo acceder al documento. Verifique que esté compartido públicamente.`);
             }
 
             const csvText = await response.text();
+            
+            if (!csvText || csvText.trim().length === 0) {
+                throw new Error('La hoja está vacía o no contiene datos.');
+            }
+            
             this.data = this.parseCSV(csvText);
             
             if (this.data.length > 0) {
                 this.headers = this.data[0];
+                console.log(`✅ Datos cargados: ${this.data.length - 1} filas`);
             }
 
             // Cachear los datos
@@ -68,17 +83,21 @@ const SheetsAPI = {
             });
 
             return this.data;
+            
         } catch (error) {
-            console.error('Error fetching sheet data:', error);
+            console.error('❌ Error fetching sheet data:', error);
+            console.log('📋 Intentando usar datos cacheados...');
             
             // Intentar usar datos cacheados
             const cached = Storage.getCachedData();
-            if (cached && cached.sheetId === this.sheetId) {
+            if (cached && cached.sheetId === this.sheetId && cached.data && cached.data.length > 0) {
+                console.log(`✅ Usando datos cacheados: ${cached.data.length - 1} filas`);
                 this.data = cached.data;
                 this.headers = cached.headers;
                 return this.data;
             }
             
+            console.error('❌ Sin datos cacheados disponibles');
             throw error;
         }
     },

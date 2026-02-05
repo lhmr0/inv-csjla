@@ -405,11 +405,17 @@ const UI = {
      * @returns {Object} Valores del formulario
      */
     getLoginFormValues() {
+        // Obtener valores o usar defaults
+        const operatorInput = document.getElementById('operatorName');
+        const sheetUrlInput = document.getElementById('sheetUrl');
+        const sheetNameInput = document.getElementById('sheetName');
+        const webAppUrlInput = document.getElementById('webAppUrl');
+        
         return {
-            operator: this.elements.operatorName.value.trim(),
-            sheetUrl: '', // Usar valor por defecto
-            sheetName: '', // Usar valor por defecto
-            webAppUrl: '' // Usar valor por defecto
+            operator: operatorInput ? operatorInput.value.trim() : '',
+            sheetUrl: (sheetUrlInput && sheetUrlInput.value.trim()) || CONFIG.defaults.sheetUrl,
+            sheetName: (sheetNameInput && sheetNameInput.value.trim()) || CONFIG.defaults.sheetName,
+            webAppUrl: (webAppUrlInput && webAppUrlInput.value.trim()) || CONFIG.defaults.webAppUrl
         };
     },
 
