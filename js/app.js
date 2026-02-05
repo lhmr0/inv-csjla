@@ -459,17 +459,35 @@ const App = {
         // Si es texto OCR, mostrar modal para que usuario seleccione
         if (format === 'OCR_TEXT') {
             console.log('📋 Texto OCR leído, mostrando modal de selección...');
+            
+            // Extraer automáticamente números de 12 dígitos si existen
+            const number12Pattern = /\b\d{12}\b/g;
+            const numbers12 = code.match(number12Pattern) || [];
+            
+            let defaultSearch = '';
+            if (numbers12.length > 0) {
+                defaultSearch = numbers12[0];
+                console.log('⭐ Número de 12 dígitos detectado:', defaultSearch);
+            }
+            
             UI.showOCRSelectionModal(code, (selectedText) => {
                 if (selectedText && selectedText.trim() !== '') {
+                    // Extraer solo números de la selección
+                    const cleanText = selectedText.replace(/[^\d]/g, '');
                     console.log('✅ Usuario confirmó búsqueda con texto:', selectedText);
-                    UI.showToast(`🔍 Buscando: ${selectedText}`, 'info');
-                    UI.showLastScanned(selectedText);
-                    this.searchAndShowProduct(selectedText);
+                    console.log('🔢 Números extraídos:', cleanText);
+                    
+                    // Usar el número de 12 dígitos si existe, sino usar la selección
+                    const searchCode = cleanText.match(/\d{12}/) || cleanText || selectedText;
+                    
+                    UI.showToast(`🔍 Buscando: ${searchCode}`, 'info');
+                    UI.showLastScanned(searchCode);
+                    this.searchAndShowProduct(searchCode);
                 } else {
                     console.log('❌ Usuario canceló la búsqueda');
                     UI.showToast('Búsqueda cancelada', 'warning');
                 }
-            });
+            }, defaultSearch);
         } else {
             // Comportamiento normal para códigos de barras tradicionales
             UI.showToast(`📦 Código detectado: ${code}`, 'info');

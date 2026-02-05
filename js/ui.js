@@ -450,8 +450,9 @@ const UI = {
      * Muestra modal con texto OCR leído para que usuario seleccione
      * @param {string} ocrText - Texto leído por OCR
      * @param {function} onConfirm - Callback cuando usuario confirma selección
+     * @param {string} suggestedCode - Código sugerido (si se detectó de 12 dígitos)
      */
-    showOCRSelectionModal(ocrText, onConfirm) {
+    showOCRSelectionModal(ocrText, onConfirm, suggestedCode = '') {
         // Crear modal si no existe
         let modal = document.getElementById('ocrSelectionModal');
         if (!modal) {
@@ -465,7 +466,14 @@ const UI = {
                         <button class="modal-close" aria-label="Cerrar">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <p class="ocr-instruction">Selecciona el texto que deseas buscar:</p>
+                        <p class="ocr-instruction">Selecciona el código que deseas buscar:</p>
+                        ${suggestedCode ? `
+                            <div class="ocr-suggested-code">
+                                <strong>⭐ Código sugerido (12 dígitos):</strong>
+                                <div class="suggested-code-display">${suggestedCode}</div>
+                                <small>Haz clic en "Buscar Seleccionado" para usar este código</small>
+                            </div>
+                        ` : ''}
                         <div class="ocr-text-container">
                             <textarea id="ocrTextArea" class="ocr-text-area" readonly></textarea>
                         </div>
@@ -496,9 +504,22 @@ const UI = {
 
         // Actualizar texto OCR
         const textArea = document.getElementById('ocrTextArea');
-        textArea.value = ocrText;
-        textArea.focus();
-        textArea.select();
+        
+        // Si hay código sugerido, establecer como valor por defecto
+        if (suggestedCode) {
+            textArea.value = ocrText;
+            // Pre-seleccionar el código sugerido en el área de texto
+            setTimeout(() => {
+                const startPos = ocrText.indexOf(suggestedCode);
+                if (startPos !== -1) {
+                    textArea.setSelectionRange(startPos, startPos + suggestedCode.length);
+                }
+            }, 0);
+        } else {
+            textArea.value = ocrText;
+            textArea.focus();
+            textArea.select();
+        }
 
         // Elementos de control
         const closeBtn = modal.querySelector('.modal-close');

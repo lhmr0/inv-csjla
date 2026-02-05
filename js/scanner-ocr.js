@@ -239,18 +239,20 @@ const BarcodeScanner = {
 
             if (result && result.data && result.data.text) {
                 const text = result.data.text.trim();
-                const numbers = text.replace(/\D/g, '');
-
+                
                 if (text.length > 0) {
+                    // Extraer números y priorizar los de 12 caracteres
+                    const prioritizedNumbers = this.extractAndPrioritizeNumbers(text);
+                    
                     console.log(`📊 OCR encontró: "${text}"`);
-                    console.log(`🔢 Números: "${numbers}"`);
+                    console.log(`🔢 Números priorizados:`, prioritizedNumbers);
                     
                     // Mostrar el texto al usuario en lugar de buscar automáticamente
                     this.drawScanBox(true, `OCR: ${text.substring(0, 20)}...`);
                     
                     // Callback sin buscar - solo mostrar el texto
                     if (this.onDetected) {
-                        this.onDetected(text, 'OCR_TEXT');
+                        this.onDetected(prioritizedNumbers, 'OCR_TEXT');
                     }
                 } else {
                     this.drawScanBox(false);
@@ -309,6 +311,57 @@ const BarcodeScanner = {
             data[i + 1] = enhanced;
             data[i + 2] = enhanced;
         }
+    },
+
+    /**
+     * Extrae números del texto OCR y prioriza los de 12 caracteres
+     * Formato esperado: 746406260465 (12 dígitos)
+     * @param {string} text - Texto extraído por OCR
+     * @returns {string} Texto formateado con prioridad a 12 dígitos
+     */
+    extractAndPrioritizeNumbers(text) {
+        // Extraer todos los números consecutivos
+        const numberPattern = /\d+/g;
+        const allNumbers = text.match(numberPattern) || [];
+        
+        if (allNumbers.length === 0) {
+            return text; // Si no hay números, retornar texto original
+        }
+
+        // Separar números por longitud
+        const numbers12 = allNumbers.filter(n => n.length === 12);
+        const numbersOther = allNumbers.filter(n => n.length !== 12);
+
+        console.log('🔢 Números encontrados:');
+        console.log('   De 12 dígitos:', numbers12);
+        console.log('   Otros:', numbersOther);
+
+        // Priorizar: primero los de 12 dígitos, luego los demás
+        let prioritized = '';
+        
+        if (numbers12.length > 0) {
+            // Usar el primer número de 12 dígitos encontrado
+            prioritized = numbers12[0];
+            console.log('⭐ Priorizado (12 dígitos):', prioritized);
+        } else if (numbersOther.length > 0) {
+            // Si no hay de 12, usar el más largo
+            const longest = numbersOther.reduce((a, b) => a.length > b.length ? a : b);
+            prioritized = longest;
+            console.log('⭐ Priorizado (más largo):', prioritized);
+        }
+
+        // Retornar formato para mostrar al usuario:
+        // "Números encontrados:\n[lista con prioridad]"
+        const displayText = [];
+        if (numbers12.length > 0) {
+            displayText.push('🎯 Números de 12 dígitos (PRIORIDAD):\n' + numbers12.join('\n'));
+        }
+        if (numbersOther.length > 0) {
+            displayText.push('Otros números:\n' + numbersOther.join('\n'));
+        }
+        displayText.push('\nTexto original:\n' + text);
+
+        return displayText.join('\n\n');
     },
 
     /**
