@@ -175,9 +175,109 @@ const BarcodeScanner = {
     lastFrameTime: 0,
     frameCount: 0,
     lastError: '',
+    capturedFrames: [],
+    maxStoredFrames: 5,
 
     /**
-     * Escanea un frame del video con enfoque en el centro
+     * Captura el frame actual del video
+     */
+    captureFrame() {
+        if (!this.videoElement || this.videoElement.readyState !== 4) {
+            console.warn('Video no está listo');
+            return null;
+        }
+
+        try {
+            // Crear canvas para captura
+            const canvas = document.createElement('canvas');
+            canvas.width = this.videoElement.videoWidth;
+            canvas.height = this.videoElement.videoHeight;
+
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(this.videoElement, 0, 0);
+
+            // Convertir a blob/base64
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            
+            // Guardar captura
+            const captureInfo = {
+                timestamp: Date.now(),
+                width: canvas.width,
+                height: canvas.height,
+                imageData: imageData,
+                canvas: canvas,
+                base64: canvas.toDataURL('image/jpeg', 0.9)
+            };
+
+            // Guardar en historial (máximo 5 capturas)
+            this.capturedFrames.unshift(captureInfo);
+            if (this.capturedFrames.length > this.maxStoredFrames) {
+                this.capturedFrames.pop();
+            }
+
+            console.log(`📸 Frame capturado: ${canvas.width}x${canvas.height}`);
+            return captureInfo;
+        } catch (error) {
+            console.error('Error capturando frame:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Analiza una captura con todas las estrategias
+     */
+    analyzeCapture(captureInfo, showDebug = true) {
+        if (!captureInfo) {
+            console.error('No hay captura para analizar');
+            return null;
+        }
+
+        try {
+            console.log('🔍 Analizando captura...');
+            const strategies = [
+                { name: 'Original', fn: (data) => data },
+                { name: 'Contrast Agr.', fn: (data) => this.enhanceImageAggressive(this.copyImageData(data)) },
+                { name: 'Binarización', fn: (data) => this.binarizeImage(this.copyImageData(data)) },
+                { name: 'Invertir', fn: (data) => this.invertImage(this.copyImageData(data)) },
+                { name: 'EdgeDetect', fn: (data) => this.applyEdgeDetection(this.copyImageData(data)) },
+                { name: 'Adaptativo', fn: (data) => this.adaptiveThreshold(this.copyImageData(data)) }
+            ];
+
+            for (let i = 0; i < strategies.length; i++) {
+                const strategy = strategies[i];
+                try {
+                    let processed = strategy.fn(captureInfo.imageData);
+                    const result = this.multiFormatReader.decodeWithState(processed);
+                    if (result) {
+                        const code = result.getText();
+                        console.log(`✅ DETECTADO con ${strategy.name}: ${code}`);
+                        this.handleDetection(code);
+                        this.drawScanBox(true, `${strategy.name}`);
+                        return {
+                            code: code,
+                            format: result.getBarcodeFormat(),
+                            strategy: strategy.name,
+                            timestamp: captureInfo.timestamp
+                        };
+                    }
+                } catch (e) {
+                    // Continuar
+                }
+            }
+
+            console.log('❌ No se detectó con ninguna estrategia');
+            if (showDebug) {
+                this.drawScanBox(false, 'Sin detección');
+            }
+            return null;
+        } catch (error) {
+            console.error('Error analizando captura:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Escanea un frame del video - versión mejorada con captura
      */
     scanFrame() {
         if (!this.isRunning || !this.videoElement || this.videoElement.readyState !== 4) {
@@ -188,38 +288,22 @@ const BarcodeScanner = {
         const frameStartTime = performance.now();
 
         try {
-            // Crear canvas
-            const canvas = document.createElement('canvas');
-            canvas.width = this.videoElement.videoWidth;
-            canvas.height = this.videoElement.videoHeight;
-            
-            if (canvas.width === 0 || canvas.height === 0) {
+            // Capturar frame
+            const capture = this.captureFrame();
+            if (!capture) {
+                this.drawScanBox(false, 'Error en captura');
                 return;
             }
 
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(this.videoElement, 0, 0);
-
-            // Obtener imagen original
-            let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-            // PRIORIDAD 1: Intentar en región central (donde está el recuadro)
-            const centralRegion = this.extractCentralRegion(imageData);
-            
-            if (this.tryAllStrategies(centralRegion, 'CENTRAL')) {
-                this.lastFrameTime = performance.now() - frameStartTime;
-                return;
-            }
-
-            // PRIORIDAD 2: Si no funciona en centro, probar toda la imagen
-            if (this.tryAllStrategies(imageData, 'COMPLETA')) {
-                this.lastFrameTime = performance.now() - frameStartTime;
-                return;
-            }
+            // Analizar la captura
+            const detected = this.analyzeCapture(capture, false);
 
             this.lastFrameTime = performance.now() - frameStartTime;
-            // Dibujar área de escaneo (sin detección)
-            this.drawScanBox(false);
+
+            // Dibujar overlay
+            if (!detected) {
+                this.drawScanBox(false);
+            }
 
         } catch (error) {
             this.lastError = error.message;
@@ -265,7 +349,7 @@ const BarcodeScanner = {
 
     /**
      * Intenta todas las estrategias de detección en un imageData dado
-     * Retorna true si detectó algo
+     * DEPRECATED - Usar analyzeCapture() en su lugar
      */
     tryAllStrategies(imageData, regionType = 'DESCONOCIDA') {
         const strategies = [

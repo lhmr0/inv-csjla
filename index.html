@@ -61,6 +61,12 @@
                         <button id="btnStartScan" class="btn btn-success">▶️ Iniciar Cámara</button>
                         <button id="btnStopScan" class="btn btn-danger hidden">⏹️ Detener Cámara</button>
                         <button id="btnSwitchCamera" class="btn btn-secondary hidden">🔄 Cambiar Cámara</button>
+                        <button id="btnCaptureFrame" class="btn btn-primary hidden">📸 Capturar Frame</button>
+                    </div>
+                    <div id="capturedFrames" class="form-group" style="margin-top: 1rem; display: none;">
+                        <label>📷 Frames Capturados:</label>
+                        <div id="framesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.5rem; margin-top: 0.5rem;">
+                        </div>
                     </div>
                     <div class="form-group" style="margin-top: 1rem;">
                         <label for="imageInput">O cargar una imagen:</label>

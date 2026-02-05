@@ -102,6 +102,11 @@ const UI = {
         this.elements.btnStartScan.classList.toggle('hidden', isScanning);
         this.elements.btnStopScan.classList.toggle('hidden', !isScanning);
         this.elements.btnSwitchCamera.classList.toggle('hidden', !isScanning);
+        
+        // Mostrar botón de captura de frames si está disponible
+        if (this.elements.btnCaptureFrame) {
+            this.elements.btnCaptureFrame.classList.toggle('hidden', !isScanning);
+        }
     },
 
     /**

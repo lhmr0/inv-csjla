@@ -65,6 +65,10 @@ const App = {
         UI.elements.btnStartScan.addEventListener('click', () => this.startScanner());
         UI.elements.btnStopScan.addEventListener('click', () => this.stopScanner());
         UI.elements.btnSwitchCamera.addEventListener('click', () => this.switchCamera());
+        UI.elements.btnCaptureFrame = document.getElementById('btnCaptureFrame');
+        if (UI.elements.btnCaptureFrame) {
+            UI.elements.btnCaptureFrame.addEventListener('click', () => this.captureAndAnalyzeFrame());
+        }
         
         // Image processing
         const btnProcessImage = document.getElementById('btnProcessImage');
@@ -233,6 +237,93 @@ const App = {
             UI.showToast('⚠️ ' + (error.message || 'Error al cambiar cámara'), 'warning');
             console.warn('Error:', error);
         }
+    },
+
+    /**
+     * Captura un frame del video y lo analiza
+     */
+    captureAndAnalyzeFrame() {
+        try {
+            console.log('📸 Capturando frame del video...');
+            const capture = BarcodeScanner.captureFrame();
+            
+            if (!capture) {
+                UI.showToast('❌ Error al capturar frame', 'error');
+                return;
+            }
+
+            console.log('✅ Frame capturado, tamaño:', capture.base64.length, 'bytes');
+            
+            // Mostrar la captura en la UI
+            this.displayCapturedFrame(capture);
+
+            // Analizar la captura
+            console.log('🔍 Analizando captura con todas las estrategias...');
+            const detected = BarcodeScanner.analyzeCapture(capture, true);
+
+            if (detected && detected.code) {
+                UI.showToast('✅ Código detectado: ' + detected.code, 'success');
+                UI.showLastScanned(detected.code);
+                // Intentar buscar el producto
+                this.searchAndShowProduct(detected.code);
+            } else {
+                UI.showToast('⚠️ No se detectó código en esta captura', 'warning');
+            }
+
+        } catch (error) {
+            console.error('❌ Error capturando frame:', error);
+            UI.showToast('Error: ' + error.message, 'error');
+        }
+    },
+
+    /**
+     * Muestra una captura en la galería de frames
+     */
+    displayCapturedFrame(capture) {
+        const framesList = document.getElementById('framesList');
+        const capturedFramesDiv = document.getElementById('capturedFrames');
+
+        if (!framesList || !capturedFramesDiv) {
+            console.warn('Elementos de galería no encontrados');
+            return;
+        }
+
+        // Mostrar contenedor
+        capturedFramesDiv.style.display = 'block';
+
+        // Crear elemento para la captura
+        const frameEl = document.createElement('div');
+        frameEl.className = 'frame-thumbnail';
+        frameEl.innerHTML = `
+            <img src="${capture.base64}" alt="Captura ${new Date(capture.timestamp).toLocaleTimeString()}" />
+            <div class="frame-info">${new Date(capture.timestamp).toLocaleTimeString()}</div>
+            <button class="frame-delete" title="Eliminar">✕</button>
+        `;
+
+        // Evento click para eliminar
+        frameEl.querySelector('.frame-delete').addEventListener('click', (e) => {
+            e.stopPropagation();
+            frameEl.remove();
+            if (framesList.children.length === 0) {
+                capturedFramesDiv.style.display = 'none';
+            }
+        });
+
+        // Evento click en la imagen para re-analizar
+        frameEl.querySelector('img').addEventListener('click', () => {
+            console.log('Re-analizando captura guardada...');
+            BarcodeScanner.analyzeCapture(capture, true);
+        });
+
+        // Agregar al inicio de la lista
+        framesList.insertBefore(frameEl, framesList.firstChild);
+
+        // Limitar a 5 capturas visibles
+        while (framesList.children.length > 5) {
+            framesList.removeChild(framesList.lastChild);
+        }
+
+        console.log('📷 Captura agregada a la galería. Total:', framesList.children.length);
     },
 
     /**
