@@ -239,13 +239,18 @@ const BarcodeScanner = {
 
             if (result && result.data && result.data.text) {
                 const text = result.data.text.trim();
-                const numbers = text.replace(/\D/g, ''); // Extraer solo números
+                const numbers = text.replace(/\D/g, '');
 
-                if (numbers.length >= 10) { // Code 128 típicamente tiene más de 10 dígitos
-                    console.log(`📊 OCR encontró: "${text}" → Números: "${numbers}"`);
+                if (text.length > 0) {
+                    console.log(`📊 OCR encontró: "${text}"`);
+                    console.log(`🔢 Números: "${numbers}"`);
                     
-                    if (this.validateAndDetect(numbers)) {
-                        this.drawScanBox(true, 'OCR');
+                    // Mostrar el texto al usuario en lugar de buscar automáticamente
+                    this.drawScanBox(true, `OCR: ${text.substring(0, 20)}...`);
+                    
+                    // Callback sin buscar - solo mostrar el texto
+                    if (this.onDetected) {
+                        this.onDetected(text, 'OCR_TEXT');
                     }
                 } else {
                     this.drawScanBox(false);
@@ -261,40 +266,23 @@ const BarcodeScanner = {
     },
 
     /**
-     * Valida y reporta código detectado
+     * El usuario confirma la búsqueda del código
      */
-    validateAndDetect(code) {
-        if (!code || code.length < 10) return false;
+    searchCode(code) {
+        if (!code || code.length === 0) return false;
 
+        console.log('🔎 Buscando código:', code);
+        
         const now = Date.now();
-
-        // Debounce
         if (code === this.lastDetectedCode && (now - this.lastDetectedTime) < this.debounceTime) {
+            console.log('⏱️ Código duplicado, ignorando');
             return false;
         }
 
         this.lastDetectedCode = code;
         this.lastDetectedTime = now;
 
-        console.log('✅ ✅ ✅ ¡CÓDIGO DETECTADO! ✅ ✅ ✅', code);
-
-        // Vibrar
-        try {
-            if (navigator.vibrate) {
-                navigator.vibrate([100, 50, 100]);
-            }
-        } catch (e) {
-            console.debug('Vibración no disponible');
-        }
-
-        // Reproducir sonido
         this.playBeep();
-
-        // Callback
-        if (this.onDetected) {
-            this.onDetected(code, 'CODE_128');
-        }
-
         return true;
     },
 

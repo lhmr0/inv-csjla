@@ -455,11 +455,28 @@ const App = {
         }
 
         console.log('✅ CÓDIGO DETECTADO EN VIVO:', code, 'Formato:', format);
-        UI.showToast(`📦 Código detectado: ${code}`, 'info');
-        UI.showLastScanned(code);
-        
-        // Buscar producto
-        await this.searchAndShowProduct(code);
+
+        // Si es texto OCR, mostrar modal para que usuario seleccione
+        if (format === 'OCR_TEXT') {
+            console.log('📋 Texto OCR leído, mostrando modal de selección...');
+            UI.showOCRSelectionModal(code, (selectedText) => {
+                if (selectedText && selectedText.trim() !== '') {
+                    console.log('✅ Usuario confirmó búsqueda con texto:', selectedText);
+                    UI.showToast(`🔍 Buscando: ${selectedText}`, 'info');
+                    UI.showLastScanned(selectedText);
+                    this.searchAndShowProduct(selectedText);
+                } else {
+                    console.log('❌ Usuario canceló la búsqueda');
+                    UI.showToast('Búsqueda cancelada', 'warning');
+                }
+            });
+        } else {
+            // Comportamiento normal para códigos de barras tradicionales
+            UI.showToast(`📦 Código detectado: ${code}`, 'info');
+            UI.showLastScanned(code);
+            // Buscar producto
+            await this.searchAndShowProduct(code);
+        }
     },
 
     /**

@@ -6,7 +6,7 @@ const CONFIG = {
     defaults: {
         sheetId: '1cIPjvg6Kfi79d6810JosSKCk4HSYcxqNYpTtdZ28bYQ',
         sheetUrl: 'https://docs.google.com/spreadsheets/d/1cIPjvg6Kfi79d6810JosSKCk4HSYcxqNYpTtdZ28bYQ/edit?usp=sharing',
-        webAppUrl: 'https://script.google.com/macros/s/AKfycbwnYwze4g9Ax5ACdd9RblheVueboaGY7YaFINLK6IiDNLx58YJIO5R6speNCkScezGj/exec',
+        webAppUrl: 'https://script.google.com/macros/s/AKfycbx21HdCVIrNn7W8yNvmyfpLf-iX-DJquPhSVMev83cGk921TWh09pGkwBX5C2uUzzxT/exec',
         sheetName: 'Inventario'
     },
     
@@ -45,25 +45,51 @@ const CONFIG = {
         apiUrl: 'https://docs.google.com/spreadsheets/d/',
         // Columnas esperadas en el Excel (índices base 0)
         columns: {
-            codigo: 0,           // A - Código de barras
-            descripcion: 1,      // B - Descripción del producto
-            categoria: 2,        // C - Categoría
-            ubicacion: 3,        // D - Ubicación
-            cantidad: 4,         // E - Cantidad
-            inventariado: 5,     // F - ¿Inventariado? (SI/NO)
-            fechaInventario: 6,  // G - Fecha de inventario
-            realizadoPor: 7      // H - Realizado Por
+            nombre_local: 0,                // A - Nombre del Local
+            direccion_local: 1,             // B - Dirección del Local
+            bloque: 2,                      // C - Bloque
+            piso: 3,                        // D - Piso
+            ambiente: 4,                    // E - Ambiente
+            apellidos_nombres: 5,           // F - Apellidos y Nombres
+            nombre_ofi: 6,                  // G - Nombre de Oficina
+            cod_inv: 7,                     // H - Código Inventario
+            cod_m: 8,                       // I - Código M
+            cod_patrim: 9,                  // J - Código de Patrimonio (CLAVE DE BÚSQUEDA)
+            descripcion_denominacion: 10,   // K - Descripción/Denominación
+            marca: 11,                      // L - Marca
+            modelo: 12,                     // M - Modelo
+            color: 13,                      // N - Color
+            estado_conserv: 14,             // O - Estado de Conservación
+            fecha_inv: 15,                  // P - Fecha de Inventario
+            usuario: 16,                    // Q - Usuario
+            digitador: 17,                  // R - Digitador
+            inventariado: 18,               // S - INVENTARIADO (SI/NO)
+            f_registro: 19,                 // T - F_REGISTRO (Fecha de Registro)
+            registrado_por: 20              // U - REGISTRADO_POR (Nombre del registrador)
         },
         // Nombres de las columnas para mostrar
         columnNames: {
-            0: 'Código',
-            1: 'Descripción',
-            2: 'Categoría',
-            3: 'Ubicación',
-            4: 'Cantidad',
-            5: 'Inventariado',
-            6: 'Fecha Inventario',
-            7: 'Realizado Por'
+            0: 'Nombre del Local',
+            1: 'Dirección del Local',
+            2: 'Bloque',
+            3: 'Piso',
+            4: 'Ambiente',
+            5: 'Apellidos y Nombres',
+            6: 'Nombre de Oficina',
+            7: 'Código Inventario',
+            8: 'Código M',
+            9: 'Código de Patrimonio',
+            10: 'Descripción/Denominación',
+            11: 'Marca',
+            12: 'Modelo',
+            13: 'Color',
+            14: 'Estado de Conservación',
+            15: 'Fecha de Inventario',
+            16: 'Usuario',
+            17: 'Digitador',
+            18: 'INVENTARIADO',
+            19: 'F_REGISTRO',
+            20: 'REGISTRADO_POR'
         }
     },
     

@@ -144,7 +144,7 @@ const SheetsAPI = {
      * @returns {Object|null} Producto encontrado o null
      */
     findByCode(code) {
-        const codeColumn = CONFIG.sheets.columns.codigo;
+        const codeColumn = CONFIG.sheets.columns.cod_patrim;
         
         for (let i = 1; i < this.data.length; i++) { // Empezar desde 1 para saltar headers
             const row = this.data[i];
@@ -167,15 +167,27 @@ const SheetsAPI = {
     rowToProduct(row) {
         const cols = CONFIG.sheets.columns;
         return {
-            codigo: row[cols.codigo] || '',
-            descripcion: row[cols.descripcion] || '',
-            categoria: row[cols.categoria] || '',
-            ubicacion: row[cols.ubicacion] || '',
-            cantidad: row[cols.cantidad] || '',
+            nombre_local: row[cols.nombre_local] || '',
+            direccion_local: row[cols.direccion_local] || '',
+            bloque: row[cols.bloque] || '',
+            piso: row[cols.piso] || '',
+            ambiente: row[cols.ambiente] || '',
+            apellidos_nombres: row[cols.apellidos_nombres] || '',
+            nombre_ofi: row[cols.nombre_ofi] || '',
+            cod_inv: row[cols.cod_inv] || '',
+            cod_m: row[cols.cod_m] || '',
+            cod_patrim: row[cols.cod_patrim] || '',
+            descripcion_denominacion: row[cols.descripcion_denominacion] || '',
+            marca: row[cols.marca] || '',
+            modelo: row[cols.modelo] || '',
+            color: row[cols.color] || '',
+            estado_conserv: row[cols.estado_conserv] || '',
+            fecha_inv: row[cols.fecha_inv] || '',
+            usuario: row[cols.usuario] || '',
+            digitador: row[cols.digitador] || '',
             inventariado: row[cols.inventariado] || 'NO',
-            fechaInventario: row[cols.fechaInventario] || '',
-            realizadoPor: row[cols.realizadoPor] || '',
-            observaciones: row[cols.observaciones] || ''
+            f_registro: row[cols.f_registro] || '',
+            registrado_por: row[cols.registrado_por] || ''
         };
     },
 
@@ -206,8 +218,8 @@ const SheetsAPI = {
                 url.searchParams.set('sheetName', this.sheetName);
                 url.searchParams.set('row', rowIndex.toString());
                 url.searchParams.set('inventariado', 'SI');
-                url.searchParams.set('fecha', dateStr);
-                url.searchParams.set('realizado', operator);
+                url.searchParams.set('f_registro', dateStr);
+                url.searchParams.set('registrado_por', operator);
 
                 console.log('🔄 Enviando actualización a:', url.toString());
 
@@ -256,13 +268,13 @@ const SheetsAPI = {
         
         if (this.data[dataIndex]) {
             // Asegurar que la fila tenga suficientes columnas
-            while (this.data[dataIndex].length <= cols.realizadoPor) {
+            while (this.data[dataIndex].length <= cols.f_registro) {
                 this.data[dataIndex].push('');
             }
             
             this.data[dataIndex][cols.inventariado] = 'SI';
-            this.data[dataIndex][cols.fechaInventario] = date;
-            this.data[dataIndex][cols.realizadoPor] = operator;
+            this.data[dataIndex][cols.f_registro] = date;
+            this.data[dataIndex][cols.registrado_por] = operator;
         }
     },
 

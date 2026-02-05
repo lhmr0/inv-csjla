@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba OCR con Selección - Inventario</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+
+        .description {
+            color: #666;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .video-container {
+            width: 100%;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            aspect-ratio: 16/9;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+            transform: translateY(-2px);
+        }
+
+        .status {
+            padding: 1rem;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 1rem;
+        }
+
+        .status p {
+            color: #666;
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+
+        .status .label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .ocr-result {
+            padding: 1rem;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .ocr-result textarea {
+            width: 100%;
+            height: 150px;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            resize: vertical;
+        }
+
+        .log {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+
+        .log-entry {
+            padding: 0.25rem 0;
+            border-bottom: 1px solid #334155;
+        }
+
+        .log-entry.info { color: #60a5fa; }
+        .log-entry.success { color: #34d399; }
+        .log-entry.error { color: #f87171; }
+        .log-entry.warning { color: #fbbf24; }
+
+        .info-box {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+            color: #1e40af;
+        }
+
+        .success-box {
+            background: #dcfce7;
+            border-left: 4px solid #22c55e;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+            color: #166534;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.4rem;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Prueba OCR con Selección</h1>
+        
+        <div class="description">
+            <p>Este test demuestra el nuevo flujo de OCR:</p>
+            <ol style="margin-left: 1.5rem; color: #666;">
+                <li>Captura frames de la cámara</li>
+                <li>Aplica OCR para leer el texto</li>
+                <li>Muestra el texto leído</li>
+                <li><strong>El usuario selecciona</strong> qué parte buscar</li>
+                <li>Sistema busca solo lo seleccionado</li>
+            </ol>
+        </div>
+
+        <!-- Sección de Control de Cámara -->
+        <div class="section">
+            <h2>📹 Control de Cámara</h2>
+            
+            <div class="video-container">
+                <video id="testVideo" autoplay playsinline></video>
+            </div>
+
+            <div class="controls">
+                <button class="btn-primary" id="btnStart">▶️ Iniciar Cámara</button>
+                <button class="btn-secondary" id="btnStop" disabled>⏹️ Detener</button>
+                <button class="btn-secondary" id="btnCapture" disabled>📸 Capturar Frame</button>
+            </div>
+
+            <div class="status">
+                <p><span class="label">Estado:</span> <span id="statusText">Inactivo</span></p>
+                <p><span class="label">Resolución:</span> <span id="resolutionText">-</span></p>
+                <p><span class="label">FPS:</span> <span id="fpsText">-</span></p>
+                <p><span class="label">Frames capturados:</span> <span id="frameCount">0</span></p>
+            </div>
+        </div>
+
+        <!-- Sección de Resultado OCR -->
+        <div class="section">
+            <h2>📋 Resultado OCR</h2>
+            
+            <div class="info-box">
+                💡 <strong>Selecciona el texto</strong> en el área inferior y confirma para buscar
+            </div>
+
+            <div class="ocr-result">
+                <label for="ocrText" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+                    Texto leído:
+                </label>
+                <textarea id="ocrText" readonly placeholder="El texto OCR aparecerá aquí..."></textarea>
+            </div>
+
+            <div class="status" style="margin-top: 1rem;">
+                <p><span class="label">Texto seleccionado:</span> <span id="selectedText">-</span></p>
+                <p><span class="label">Caracteres:</span> <span id="charCount">0</span></p>
+            </div>
+
+            <div class="controls" style="margin-top: 1rem;">
+                <button class="btn-primary" id="btnSearch" disabled>🔍 Buscar Seleccionado</button>
+                <button class="btn-secondary" id="btnClearText">🔄 Limpiar</button>
+            </div>
+        </div>
+
+        <!-- Sección de Logs -->
+        <div class="section">
+            <h2>📊 Logs</h2>
+            <div class="log" id="logContainer">
+                <div class="log-entry info">Inicializado. Presiona "Iniciar Cámara"</div>
+            </div>
+        </div>
+
+        <!-- Sección de Información -->
+        <div class="section">
+            <h2>ℹ️ Características</h2>
+            <ul style="margin-left: 1.5rem; color: #666; line-height: 1.8;">
+                <li>✅ Lectura OCR usando Tesseract.js</li>
+                <li>✅ Captura de frames en tiempo real</li>
+                <li>✅ Mejora de imagen para OCR (contraste, binarización)</li>
+                <li>✅ <strong>Selección manual de usuario</strong> antes de buscar</li>
+                <li>✅ Contador de caracteres seleccionados</li>
+                <li>✅ Logs en tiempo real</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
+    <script>
+        const testUI = {
+            video: document.getElementById('testVideo'),
+            ocrText: document.getElementById('ocrText'),
+            selectedText: document.getElementById('selectedText'),
+            charCount: document.getElementById('charCount'),
+            logContainer: document.getElementById('logContainer'),
+            statusText: document.getElementById('statusText'),
+            resolutionText: document.getElementById('resolutionText'),
+            fpsText: document.getElementById('fpsText'),
+            frameCount: document.getElementById('frameCount'),
+            
+            buttons: {
+                start: document.getElementById('btnStart'),
+                stop: document.getElementById('btnStop'),
+                capture: document.getElementById('btnCapture'),
+                search: document.getElementById('btnSearch'),
+                clear: document.getElementById('btnClearText')
+            },
+
+            stream: null,
+            canvas: null,
+            ctx: null,
+            framesCaptured: 0,
+            tesseractWorker: null,
+            isProcessing: false,
+            lastTime: Date.now(),
+            frameCount: 0,
+            fps: 0,
+
+            log(message, type = 'info') {
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                this.logContainer.appendChild(entry);
+                this.logContainer.scrollTop = this.logContainer.scrollHeight;
+                console.log(`[${type.toUpperCase()}]`, message);
+            },
+
+            async init() {
+                this.log('Inicializando Tesseract OCR...', 'info');
+                this.tesseractWorker = await Tesseract.createWorker();
+                await this.tesseractWorker.loadLanguage('spa');
+                await this.tesseractWorker.initialize('spa');
+                this.log('✅ Tesseract listo para OCR', 'success');
+
+                this.setupEventListeners();
+            },
+
+            setupEventListeners() {
+                this.buttons.start.addEventListener('click', () => this.startCamera());
+                this.buttons.stop.addEventListener('click', () => this.stopCamera());
+                this.buttons.capture.addEventListener('click', () => this.captureFrame());
+                this.buttons.search.addEventListener('click', () => this.handleSearch());
+                this.buttons.clear.addEventListener('click', () => this.clearOCR());
+
+                this.ocrText.addEventListener('mouseup', () => this.updateSelection());
+                this.ocrText.addEventListener('keyup', () => this.updateSelection());
+            },
+
+            async startCamera() {
+                try {
+                    this.log('Solicitud de acceso a cámara...', 'info');
+                    this.stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+                    });
+
+                    this.video.srcObject = this.stream;
+                    this.video.onloadedmetadata = () => {
+                        this.log(`✅ Cámara iniciada: ${this.video.videoWidth}x${this.video.videoHeight}`, 'success');
+                        this.resolutionText.textContent = `${this.video.videoWidth}x${this.video.videoHeight}`;
+                    };
+
+                    this.canvas = document.createElement('canvas');
+                    this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+
+                    this.buttons.start.disabled = true;
+                    this.buttons.stop.disabled = false;
+                    this.buttons.capture.disabled = false;
+                    this.statusText.textContent = '🟢 Activa';
+
+                    this.captureFrameLoop();
+                } catch (error) {
+                    this.log(`❌ Error: ${error.message}`, 'error');
+                }
+            },
+
+            stopCamera() {
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => track.stop());
+                    this.log('✅ Cámara detenida', 'success');
+                }
+
+                this.buttons.start.disabled = false;
+                this.buttons.stop.disabled = true;
+                this.buttons.capture.disabled = true;
+                this.statusText.textContent = '🔴 Inactiva';
+            },
+
+            captureFrameLoop() {
+                if (!this.stream || !this.stream.active) return;
+
+                this.frameCount++;
+                const now = Date.now();
+                if (now - this.lastTime >= 1000) {
+                    this.fps = this.frameCount;
+                    this.fpsText.textContent = `${this.fps} FPS`;
+                    this.frameCount = 0;
+                    this.lastTime = now;
+                }
+
+                requestAnimationFrame(() => this.captureFrameLoop());
+            },
+
+            async captureFrame() {
+                if (!this.video || !this.stream) return;
+
+                this.canvas.width = this.video.videoWidth;
+                this.canvas.height = this.video.videoHeight;
+                this.ctx.drawImage(this.video, 0, 0);
+
+                this.log('📸 Frame capturado, procesando OCR...', 'info');
+                await this.performOCR();
+            },
+
+            async performOCR() {
+                if (this.isProcessing) return;
+                this.isProcessing = true;
+
+                try {
+                    const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                    this.enhanceImage(imageData);
+
+                    this.log('🔄 Ejecutando OCR...', 'info');
+                    const { data } = await this.tesseractWorker.recognize(this.canvas);
+                    const text = data.text.trim();
+
+                    if (text) {
+                        this.ocrText.value = text;
+                        this.framesCaptured++;
+                        this.frameCount.textContent = this.framesCaptured;
+                        this.log(`✅ OCR completado: "${text.substring(0, 50)}..."`, 'success');
+                        this.updateSelection();
+                        this.buttons.search.disabled = false;
+                    } else {
+                        this.log('⚠️ No se pudo leer texto', 'warning');
+                    }
+                } catch (error) {
+                    this.log(`❌ Error OCR: ${error.message}`, 'error');
+                } finally {
+                    this.isProcessing = false;
+                }
+            },
+
+            enhanceImage(imageData) {
+                const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+                    const contrast = ((gray - 128) * 2.5) + 128;
+                    const binary = contrast > 128 ? 255 : 0;
+                    data[i] = data[i + 1] = data[i + 2] = binary;
+                }
+            },
+
+            updateSelection() {
+                const selected = this.ocrText.value.substring(
+                    this.ocrText.selectionStart,
+                    this.ocrText.selectionEnd
+                );
+                this.selectedText.textContent = selected || '-';
+                this.charCount.textContent = selected.length;
+            },
+
+            handleSearch() {
+                const selected = this.ocrText.value.substring(
+                    this.ocrText.selectionStart,
+                    this.ocrText.selectionEnd
+                );
+                const searchText = selected.trim() || this.ocrText.value.trim();
+
+                if (searchText) {
+                    this.log(`🔍 Búsqueda confirmada: "${searchText}"`, 'success');
+                    alert(`📦 Buscaría por: "${searchText}"`);
+                } else {
+                    this.log('⚠️ Selecciona texto para buscar', 'warning');
+                }
+            },
+
+            clearOCR() {
+                this.ocrText.value = '';
+                this.selectedText.textContent = '-';
+                this.charCount.textContent = '0';
+                this.buttons.search.disabled = true;
+                this.log('🔄 Texto limpiado', 'info');
+            }
+        };
+
+        testUI.init();
+    </script>
+</body>
+</html>

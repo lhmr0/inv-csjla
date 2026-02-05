@@ -134,63 +134,146 @@ const UI = {
             html = `
                 ${isInventoried ? `
                     <div class="already-inventoried">
-                        <div class="icon">⚠️</div>
-                        <p>Este producto ya fue inventariado</p>
-                        <small>Por: ${product.realizadoPor} - ${product.fechaInventario}</small>
+                        <div class="icon">✅</div>
+                        <p>Este bien ya fue registrado</p>
+                        <small>Por: ${product.registrado_por} - ${product.f_registro}</small>
                     </div>
                 ` : ''}
                 
                 <div class="product-info">
-                    <h3>📦 ${product.descripcion || 'Sin descripción'}</h3>
+                    <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">🏢 Información del Local</h3>
                     
                     <div class="product-detail">
-                        <span class="product-detail-label">Código:</span>
-                        <span class="product-detail-value">${product.codigo}</span>
+                        <span class="product-detail-label">Nombre del Local:</span>
+                        <span class="product-detail-value">${product.nombre_local || '-'}</span>
                     </div>
                     
                     <div class="product-detail">
-                        <span class="product-detail-label">Categoría:</span>
-                        <span class="product-detail-value">${product.categoria || '-'}</span>
+                        <span class="product-detail-label">Dirección:</span>
+                        <span class="product-detail-value">${product.direccion_local || '-'}</span>
                     </div>
                     
                     <div class="product-detail">
-                        <span class="product-detail-label">Ubicación:</span>
-                        <span class="product-detail-value">${product.ubicacion || '-'}</span>
+                        <span class="product-detail-label">Bloque:</span>
+                        <span class="product-detail-value">${product.bloque || '-'}</span>
                     </div>
                     
                     <div class="product-detail">
-                        <span class="product-detail-label">Cantidad:</span>
-                        <span class="product-detail-value">${product.cantidad || '-'}</span>
+                        <span class="product-detail-label">Piso:</span>
+                        <span class="product-detail-value">${product.piso || '-'}</span>
                     </div>
                     
                     <div class="product-detail">
-                        <span class="product-detail-label">Estado:</span>
-                        <span class="product-detail-value">${isInventoried ? '✅ Inventariado' : '⏳ Pendiente'}</span>
+                        <span class="product-detail-label">Ambiente:</span>
+                        <span class="product-detail-value">${product.ambiente || '-'}</span>
                     </div>
+                    
+                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
+                    
+                    <h3 style="color: var(--accent-emerald); margin-bottom: 1rem; margin-top: 1rem;">👤 Información de la Persona</h3>
+                    
+                    <div class="product-detail">
+                        <span class="product-detail-label">Apellidos y Nombres:</span>
+                        <span class="product-detail-value">${product.apellidos_nombres || '-'}</span>
+                    </div>
+                    
+                    <div class="product-detail">
+                        <span class="product-detail-label">Oficina:</span>
+                        <span class="product-detail-value">${product.nombre_ofi || '-'}</span>
+                    </div>
+                    
+                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
+                    
+                    <h3 style="color: var(--accent-purple); margin-bottom: 1rem; margin-top: 1rem;">📦 Descripción del Bien</h3>
+                    
+                    <div class="product-detail">
+                        <span class="product-detail-label">Descripción/Denominación:</span>
+                        <span class="product-detail-value">${product.descripcion_denominacion || '-'}</span>
+                    </div>
+                    
+                    <div class="product-detail">
+                        <span class="product-detail-label">Marca:</span>
+                        <span class="product-detail-value">${product.marca || '-'}</span>
+                    </div>
+                    
+                    <div class="product-detail">
+                        <span class="product-detail-label">Modelo:</span>
+                        <span class="product-detail-value">${product.modelo || '-'}</span>
+                    </div>
+                    
+                    <div class="product-detail">
+                        <span class="product-detail-label">Color:</span>
+                        <span class="product-detail-value">${product.color || '-'}</span>
+                    </div>
+                    
+                    <div class="product-detail">
+                        <span class="product-detail-label">Estado de Conservación:</span>
+                        <span class="product-detail-value">${product.estado_conserv || '-'}</span>
+                    </div>
+                    
+                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
+                    
+                    <h3 style="color: var(--warning-color); margin-bottom: 1rem; margin-top: 1rem;">🔖 Información de Codificación</h3>
+                    
+                    <div class="product-detail">
+                        <span class="product-detail-label">Código de Patrimonio:</span>
+                        <span class="product-detail-value" style="font-weight: bold; color: var(--accent-cyan);">${product.cod_patrim || '-'}</span>
+                    </div>
+                    
+                    <div class="product-detail">
+                        <span class="product-detail-label">Código Inventario:</span>
+                        <span class="product-detail-value">${product.cod_inv || '-'}</span>
+                    </div>
+                    
+                    <div class="product-detail">
+                        <span class="product-detail-label">Código M:</span>
+                        <span class="product-detail-value">${product.cod_m || '-'}</span>
+                    </div>
+                    
+                    ${product.fecha_inv ? `
+                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
+                        
+                        <h3 style="color: var(--success-color); margin-bottom: 1rem; margin-top: 1rem;">📋 Información Adicional</h3>
+                        
+                        <div class="product-detail">
+                            <span class="product-detail-label">Fecha de Inventario:</span>
+                            <span class="product-detail-value">${product.fecha_inv || '-'}</span>
+                        </div>
+                        
+                        ${product.usuario ? `
+                            <div class="product-detail">
+                                <span class="product-detail-label">Usuario:</span>
+                                <span class="product-detail-value">${product.usuario || '-'}</span>
+                            </div>
+                        ` : ''}
+                        
+                        ${product.digitador ? `
+                            <div class="product-detail">
+                                <span class="product-detail-label">Digitador:</span>
+                                <span class="product-detail-value">${product.digitador || '-'}</span>
+                            </div>
+                        ` : ''}
+                    ` : ''}
                 </div>
                 
                 <div class="inventory-actions">
-                    <h4>📝 Marcar como Inventariado</h4>
-                    <div class="form-group">
-                        <label for="modalObservations">Observaciones (opcional):</label>
-                        <textarea id="modalObservations" rows="2" placeholder="Ingrese observaciones..."></textarea>
-                    </div>
+                    <h4>📝 ¿Desea Registrar este Bien en el Inventario?</h4>
                     <button id="btnMarkInventoried" class="btn btn-success btn-block">
-                        ✅ ${isInventoried ? 'Actualizar Inventario' : 'Marcar Inventariado'}
+                        ✅ ${isInventoried ? 'Actualizar Registro' : 'Sí, Registrar Bien'}
                     </button>
-                    <a href="${SheetsAPI.getEditUrl(result.rowIndex)}" target="_blank" class="btn btn-secondary btn-block" style="margin-top: 0.5rem;">
-                        📝 Editar en Google Sheets
-                    </a>
+                    <button id="btnCancelRegistration" class="btn btn-secondary btn-block" style="margin-top: 0.5rem;">
+                        ❌ No, Cancelar
+                    </button>
                 </div>
             `;
         } else {
             html = `
                 <div class="product-not-found">
                     <div class="icon">❌</div>
-                    <h3>Producto No Encontrado</h3>
-                    <p>El código <strong>${code}</strong> no existe en la base de datos.</p>
+                    <h3>Bien No Encontrado</h3>
+                    <p>El código de patrimonio <strong>${code}</strong> no existe en el inventario.</p>
                     <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
-                        Verifique que el código sea correcto o agregue el producto al inventario en Google Sheets.
+                        Verifique que el código sea correcto o agregue el bien al inventario en Google Sheets.
                     </p>
                 </div>
             `;
@@ -202,9 +285,15 @@ const UI = {
         // Configurar evento de actualización
         if (result) {
             const btnUpdate = document.getElementById('btnMarkInventoried');
+            const btnCancel = document.getElementById('btnCancelRegistration');
+            
             btnUpdate.addEventListener('click', () => {
-                const observations = document.getElementById('modalObservations').value;
-                onUpdate(result.rowIndex, observations);
+                onUpdate(result.rowIndex, '');
+                this.closeModal();
+            });
+            
+            btnCancel.addEventListener('click', () => {
+                this.closeModal();
             });
         }
     },
@@ -355,5 +444,132 @@ const UI = {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    },
+
+    /**
+     * Muestra modal con texto OCR leído para que usuario seleccione
+     * @param {string} ocrText - Texto leído por OCR
+     * @param {function} onConfirm - Callback cuando usuario confirma selección
+     */
+    showOCRSelectionModal(ocrText, onConfirm) {
+        // Crear modal si no existe
+        let modal = document.getElementById('ocrSelectionModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'ocrSelectionModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content ocr-selection">
+                    <div class="modal-header">
+                        <h3>📋 Texto OCR Leído</h3>
+                        <button class="modal-close" aria-label="Cerrar">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="ocr-instruction">Selecciona el texto que deseas buscar:</p>
+                        <div class="ocr-text-container">
+                            <textarea id="ocrTextArea" class="ocr-text-area" readonly></textarea>
+                        </div>
+                        <div class="ocr-selection-info">
+                            <small id="selectionCharCount">Caracteres seleccionados: 0</small>
+                        </div>
+                        <div class="ocr-buttons">
+                            <button id="ocrCopyBtn" class="btn btn-secondary">
+                                📋 Copiar Todo
+                            </button>
+                            <button id="ocrClearBtn" class="btn btn-secondary">
+                                🔄 Limpiar Selección
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="ocrCancelBtn" class="btn btn-secondary">
+                            ❌ Cancelar
+                        </button>
+                        <button id="ocrConfirmBtn" class="btn btn-primary">
+                            ✅ Buscar Seleccionado
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Actualizar texto OCR
+        const textArea = document.getElementById('ocrTextArea');
+        textArea.value = ocrText;
+        textArea.focus();
+        textArea.select();
+
+        // Elementos de control
+        const closeBtn = modal.querySelector('.modal-close');
+        const cancelBtn = document.getElementById('ocrCancelBtn');
+        const confirmBtn = document.getElementById('ocrConfirmBtn');
+        const copyBtn = document.getElementById('ocrCopyBtn');
+        const clearBtn = document.getElementById('ocrClearBtn');
+        const selectionInfo = document.getElementById('selectionCharCount');
+
+        // Actualizar contador de selección
+        const updateSelectionInfo = () => {
+            const selected = textArea.value.substring(
+                textArea.selectionStart,
+                textArea.selectionEnd
+            );
+            selectionInfo.textContent = `Caracteres seleccionados: ${selected.length}`;
+        };
+
+        // Event listeners para actualizar contador
+        textArea.addEventListener('mouseup', updateSelectionInfo);
+        textArea.addEventListener('keyup', updateSelectionInfo);
+        textArea.addEventListener('select', updateSelectionInfo);
+
+        // Copiar texto completo
+        copyBtn.onclick = () => {
+            textArea.select();
+            document.execCommand('copy');
+            this.showToast('✅ Texto copiado al portapapeles', 'success');
+            updateSelectionInfo();
+        };
+
+        // Limpiar selección
+        clearBtn.onclick = () => {
+            textArea.setSelectionRange(0, 0);
+            updateSelectionInfo();
+        };
+
+        // Confirmar búsqueda
+        confirmBtn.onclick = () => {
+            const selected = textArea.value.substring(
+                textArea.selectionStart,
+                textArea.selectionEnd
+            );
+            const searchText = selected.trim() || textArea.value.trim();
+            
+            if (searchText) {
+                modal.style.display = 'none';
+                onConfirm(searchText);
+            } else {
+                this.showToast('⚠️ Selecciona o copia el texto que deseas buscar', 'warning');
+            }
+        };
+
+        // Cancelar
+        const closeModal = () => {
+            modal.style.display = 'none';
+            onConfirm(null);
+        };
+
+        closeBtn.onclick = closeModal;
+        cancelBtn.onclick = closeModal;
+
+        // Cerrar al hacer click fuera del modal
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        };
+
+        // Mostrar modal
+        modal.style.display = 'flex';
+        updateSelectionInfo();
     }
 };
