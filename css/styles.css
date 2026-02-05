@@ -687,30 +687,38 @@ input[type="file"] {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 2000;
     padding: 1rem;
     animation: fadeIn 0.3s ease;
+    overflow-y: auto;
+}
+
+.modal.hidden {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none;
 }
 
 .modal-content {
-    background: var(--card-glass);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--border-light);
-    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(249, 250, 251, 0.95) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1.5px solid #E5E7EB;
+    border-radius: 20px;
     width: 100%;
-    max-width: 500px;
+    max-width: 520px;
     max-height: 90vh;
     overflow-y: auto;
     position: relative;
     animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: var(--shadow-hover);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    padding: 2rem 1.5rem;
 }
 
 @keyframes modalSlideIn {
@@ -730,22 +738,23 @@ input[type="file"] {
     right: 1rem;
     font-size: 1.5rem;
     cursor: pointer;
-    color: var(--text-secondary);
-    width: 36px;
-    height: 36px;
+    color: #6B7280;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     transition: all 0.3s ease;
-    background: transparent;
-    border: 1px solid transparent;
+    background: #F3F4F6;
+    border: none;
+    font-weight: bold;
 }
 
 .close-modal:hover {
-    background: rgba(0, 217, 255, 0.1);
-    border-color: var(--accent-cyan);
+    background: #E5E7EB;
     color: var(--accent-cyan);
+    transform: scale(1.1);
 }
 
 #modalBody {
@@ -755,22 +764,25 @@ input[type="file"] {
 /* Product Info en Modal */
 .product-info {
     margin-bottom: 1.5rem;
+    background: #F9FAFB;\n    padding: 1.25rem;\n    border-radius: 12px;\n    border-left: 4px solid var(--accent-cyan);
 }
 
 .product-info h3 {
-    color: var(--accent-cyan);
+    color: #1F2937;
     margin-bottom: 1rem;
     padding-right: 2rem;
-    font-size: 1.15rem;
-    font-weight: 600;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0 0 1rem 0;
 }
 
 .product-detail {
     display: flex;
     justify-content: space-between;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--border-light);
+    padding: 0.85rem 0;
+    border-bottom: 1px solid #E5E7EB;
     align-items: center;
+    gap: 1rem;
 }
 
 .product-detail:last-child {
@@ -778,22 +790,28 @@ input[type="file"] {
 }
 
 .product-detail-label {
-    color: var(--text-secondary);
+    color: #6B7280;
     font-size: 0.9rem;
+    font-weight: 500;
+    flex-shrink: 0;
 }
 
 .product-detail-value {
-    font-weight: 600;
+    font-weight: 700;
     text-align: right;
     max-width: 60%;
     word-break: break-word;
-    color: var(--text-primary);
+    color: #1F2937;
     font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
 }
 
 .product-not-found {
     text-align: center;
     padding: 2rem 1rem;
+    background: #FEF2F2;
+    border-radius: 12px;
+    border-left: 4px solid #EF4444;
 }
 
 .product-not-found .icon {
@@ -802,28 +820,31 @@ input[type="file"] {
 }
 
 .product-not-found h3 {
-    color: var(--danger-color);
+    color: #DC2626;
     margin-bottom: 0.5rem;
-    font-size: 1.15rem;
+    font-size: 1.2rem;
+    font-weight: 700;
 }
 
 .product-not-found p {
-    color: var(--text-secondary);
+    color: #6B7280;
     margin-bottom: 1.5rem;
+    font-size: 0.95rem;
 }
 
 /* Inventory Actions en Modal */
 .inventory-actions {
     margin-top: 1.5rem;
     padding-top: 1.5rem;
-    border-top: 1px solid var(--border-light);
+    border-top: 2px solid #E5E7EB;
 }
 
 .inventory-actions h4 {
     margin-bottom: 1rem;
-    color: var(--text-primary);
+    color: #1F2937;
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 700;
+    margin: 0 0 1rem 0;
 }
 
 /* Toast Notifications - Glassmorphism */
