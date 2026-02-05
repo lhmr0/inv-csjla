@@ -249,25 +249,36 @@ const App = {
             
             if (!capture) {
                 UI.showToast('❌ Error al capturar frame', 'error');
+                console.error('❌ No se pudo capturar frame');
                 return;
             }
 
             console.log('✅ Frame capturado, tamaño:', capture.base64.length, 'bytes');
+            console.log('📐 Resolución:', capture.width, 'x', capture.height);
             
             // Mostrar la captura en la UI
             this.displayCapturedFrame(capture);
 
             // Analizar la captura
             console.log('🔍 Analizando captura con todas las estrategias...');
+            console.group('=== ANÁLISIS DE CAPTURA ===');
             const detected = BarcodeScanner.analyzeCapture(capture, true);
+            console.groupEnd();
 
             if (detected && detected.code) {
+                console.log('✅✅✅ ¡CÓDIGO ENCONTRADO! ✅✅✅');
+                console.log('📦 Código:', detected.code);
+                console.log('📋 Formato:', detected.format);
+                console.log('🔧 Estrategia:', detected.strategy);
                 UI.showToast('✅ Código detectado: ' + detected.code, 'success');
                 UI.showLastScanned(detected.code);
                 // Intentar buscar el producto
                 this.searchAndShowProduct(detected.code);
             } else {
-                UI.showToast('⚠️ No se detectó código en esta captura', 'warning');
+                console.warn('⚠️ No se detectó código en esta captura');
+                console.warn('💡 Tips: Asegúrate que el código esté bien iluminado y enfocado');
+                console.warn('💡 Intenta acercarte más o cambiar el ángulo');
+                UI.showToast('⚠️ No se detectó código. Intenta acercarte o cambiar ángulo.', 'warning');
             }
 
         } catch (error) {
