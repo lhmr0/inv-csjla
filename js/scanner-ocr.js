@@ -21,6 +21,8 @@ const BarcodeScanner = {
     codeReader: true, // Dummy para compatibilidad
     tesseractWorker: null,
     ocrEnabled: false,
+    autoAnalysisActive: false, // Controla si el análisis automático está activo
+    analysisIntervalId: null, // ID del interval para poder cancelarlo
 
     /**
      * Solicita permisos de cámara
@@ -177,11 +179,13 @@ const BarcodeScanner = {
             this.isRunning = true;
             this.frameCount = 0;
             this.lastDetectedCode = null;
+            this.autoAnalysisActive = false; // NO iniciar análisis automático
 
-            console.log('🟢 Iniciando análisis OCR en tiempo real...');
+            console.log('🟢 Cámara lista - Esperando que hagas clic en "Capturar"');
+            console.log('⏸️  Análisis OCR en modo MANUAL (solo por clic)');
 
-            // Iniciar loop de análisis
-            this.startOCRAnalysis();
+            // NO iniciar loop automático
+            // this.startOCRAnalysis(); // COMENTADO: Se inicia solo al hacer clic
             this.drawScanBox(false);
 
         } catch (error) {
@@ -192,24 +196,105 @@ const BarcodeScanner = {
     },
 
     /**
-     * Inicia el análisis OCR en tiempo real
+     * Inicia el análisis OCR en tiempo real (MANUAL, por clic)
      */
     startOCRAnalysis() {
         if (!this.isRunning) return;
+        if (this.autoAnalysisActive) return; // Ya está corriendo
 
-        // Analizar cada 500ms (2 FPS) para no sobrecargar
-        setInterval(() => {
-            if (this.isRunning) {
+        this.autoAnalysisActive = true;
+        console.log('▶️ Iniciando captura manual de frames...');
+
+        // Analizar cada 500ms SOLO si está activo
+        this.analysisIntervalId = setInterval(() => {
+            if (this.isRunning && this.autoAnalysisActive) {
                 this.analyzeCurrentFrame();
+            } else if (!this.autoAnalysisActive) {
+                // Si se detiene, limpiar el interval
+                clearInterval(this.analysisIntervalId);
+                this.analysisIntervalId = null;
             }
         }, 500);
     },
 
     /**
-     * Analiza el frame actual del video
+     * Detiene el análisis OCR automático
+     */
+    stopOCRAnalysis() {
+        if (this.analysisIntervalId) {
+            clearInterval(this.analysisIntervalId);
+            this.analysisIntervalId = null;
+        }
+        this.autoAnalysisActive = false;
+        console.log('⏸️ Análisis OCR pausado');
+    },
+
+    /**
+     * Captura UN SOLO frame cuando el usuario hace clic en "Capturar"
+     */
+    async captureAndAnalyzeOCRFrame() {
+        if (!this.isRunning || !this.ocrEnabled) {
+            console.warn('⚠️ El escáner no está activo');
+            return null;
+        }
+
+        try {
+            const videoElement = this.videoElement.querySelector('video');
+            if (!videoElement || videoElement.readyState !== 4) {
+                console.error('❌ Video no está listo');
+                return null;
+            }
+
+            console.log('📸 Capturando frame manual...');
+            const startTime = performance.now();
+
+            // Crear canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoElement, 0, 0);
+
+            // Procesar imagen: aumentar contraste
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            this.enhanceImageForOCR(imageData);
+            ctx.putImageData(imageData, 0, 0);
+
+            // OCR
+            console.log('🔍 Ejecutando OCR sobre el frame capturado...');
+            const result = await this.tesseractWorker.recognize(canvas);
+            this.lastFrameTime = performance.now() - startTime;
+
+            if (result && result.data && result.data.text) {
+                const text = result.data.text.trim();
+                const confidence = result.data.confidence;
+
+                console.log('📝 Texto extraído:', text);
+                console.log('📊 Confianza OCR:', confidence, '%');
+                console.log('⏱️ Tiempo de análisis:', this.lastFrameTime.toFixed(0), 'ms');
+
+                if (text.length > 0 && this.onDetected) {
+                    // Llamar callback con el texto OCR
+                    this.onDetected(text, 'OCR_TEXT');
+                    return text;
+                }
+            }
+
+            console.warn('⚠️ No se extrajo texto del frame');
+            return null;
+
+        } catch (error) {
+            console.error('❌ Error en captura manual:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Analiza el frame actual del video (SOLO si autoAnalysisActive es true)
      */
     async analyzeCurrentFrame() {
-        if (!this.isRunning || !this.ocrEnabled) return;
+        if (!this.isRunning || !this.ocrEnabled || !this.autoAnalysisActive) return;
 
         try {
             const videoElement = this.videoElement.querySelector('video');
@@ -397,6 +482,7 @@ const BarcodeScanner = {
             console.log('⏹️ Deteniendo escaneo...');
 
             this.isRunning = false;
+            this.stopOCRAnalysis(); // Detener análisis automático si está activo
 
             if (this.currentStream) {
                 this.currentStream.getTracks().forEach(track => track.stop());

@@ -10,6 +10,14 @@ const App = {
      * Inicializa la aplicación
      */
     async init() {
+        // Limpiar datos antiguos y verificar espacio
+        console.log('🔧 Inicializando aplicación...');
+        Storage.clearOldData();
+        const stats = Storage.getStorageStats();
+        if (stats) {
+            console.log(`📊 localStorage: ${stats.used} MB de 5 MB usado (${stats.itemCount} items)`);
+        }
+        
         // Inicializar UI
         UI.init();
         
@@ -242,44 +250,26 @@ const App = {
     /**
      * Captura un frame del video y lo analiza
      */
-    captureAndAnalyzeFrame() {
+    async captureAndAnalyzeFrame() {
         try {
-            console.log('📸 Capturando frame del video...');
-            const capture = BarcodeScanner.captureFrame();
+            console.log('📸 Capturando frame del video con OCR...');
             
-            if (!capture) {
-                UI.showToast('❌ Error al capturar frame', 'error');
-                console.error('❌ No se pudo capturar frame');
+            // Usar el nuevo método que captura Y analiza en una sola llamada
+            const ocrText = await BarcodeScanner.captureAndAnalyzeOCRFrame();
+            
+            if (!ocrText) {
+                UI.showToast('⚠️ No se pudo extraer texto del frame. Intenta acercarte o cambiar ángulo.', 'warning');
+                console.warn('⚠️ No se extrajo texto del frame');
                 return;
             }
 
-            console.log('✅ Frame capturado, tamaño:', capture.base64.length, 'bytes');
-            console.log('📐 Resolución:', capture.width, 'x', capture.height);
+            console.log('✅ Texto extraído:', ocrText);
+            UI.showToast('✅ Texto extraído correctamente', 'success');
             
-            // Mostrar la captura en la UI
-            this.displayCapturedFrame(capture);
-
-            // Analizar la captura
-            console.log('🔍 Analizando captura con todas las estrategias...');
-            console.group('=== ANÁLISIS DE CAPTURA ===');
-            const detected = BarcodeScanner.analyzeCapture(capture, true);
-            console.groupEnd();
-
-            if (detected && detected.code) {
-                console.log('✅✅✅ ¡CÓDIGO ENCONTRADO! ✅✅✅');
-                console.log('📦 Código:', detected.code);
-                console.log('📋 Formato:', detected.format);
-                console.log('🔧 Estrategia:', detected.strategy);
-                UI.showToast('✅ Código detectado: ' + detected.code, 'success');
-                UI.showLastScanned(detected.code);
-                // Intentar buscar el producto
-                this.searchAndShowProduct(detected.code);
-            } else {
-                console.warn('⚠️ No se detectó código en esta captura');
-                console.warn('💡 Tips: Asegúrate que el código esté bien iluminado y enfocado');
-                console.warn('💡 Intenta acercarte más o cambiar el ángulo');
-                UI.showToast('⚠️ No se detectó código. Intenta acercarte o cambiar ángulo.', 'warning');
-            }
+        } catch (error) {
+            console.error('❌ Error en captura y análisis:', error);
+            UI.showToast('❌ Error al capturar frame', 'error');
+        }
 
         } catch (error) {
             console.error('❌ Error capturando frame:', error);

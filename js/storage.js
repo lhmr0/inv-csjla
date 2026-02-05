@@ -163,12 +163,45 @@ const Storage = {
     },
 
     /**
-     * Guarda datos en caché
+     * Guarda datos en caché con validación de tamaño
      * @param {any} data - Datos a cachear
      */
     setCachedData(data) {
-        this.set(CONFIG.storage.keys.cachedData, data);
-        this.set(CONFIG.storage.keys.lastSync, Date.now());
+        try {
+            // Validar tamaño aproximado
+            const serialized = JSON.stringify(data);
+            const sizeInBytes = new Blob([serialized]).size;
+            const sizeInMB = sizeInBytes / (1024 * 1024);
+            
+            console.log(`📦 Tamaño del cache: ${sizeInMB.toFixed(2)} MB`);
+            
+            // Si es muy grande, solo cachear headers y metadatos
+            if (sizeInMB > 5) {
+                console.warn('⚠️ Datos muy grandes, almacenando solo metadatos...');
+                const minimalCache = {
+                    headers: data.headers,
+                    sheetId: data.sheetId,
+                    sheetName: data.sheetName,
+                    count: data.data ? data.data.length : 0,
+                    isMinimal: true,
+                    timestamp: Date.now()
+                };
+                this.set(CONFIG.storage.keys.cachedData, minimalCache);
+                this.set(CONFIG.storage.keys.lastSync, Date.now());
+                return;
+            }
+            
+            this.set(CONFIG.storage.keys.cachedData, data);
+            this.set(CONFIG.storage.keys.lastSync, Date.now());
+        } catch (error) {
+            if (error.name === 'QuotaExceededError') {
+                console.error('❌ Cuota de localStorage excedida, limpiando datos antiguos...');
+                this.clearOldData();
+                this.clearCache();
+            } else {
+                console.error('❌ Error cacheando datos:', error);
+            }
+        }
     },
 
     /**
@@ -176,14 +209,92 @@ const Storage = {
      * @returns {any|null} Datos cacheados o null si expiraron
      */
     getCachedData() {
-        const lastSync = this.get(CONFIG.storage.keys.lastSync, 0);
-        const now = Date.now();
-        
-        if (now - lastSync > CONFIG.storage.cacheExpiry) {
-            return null; // Caché expirado
+        try {
+            const cached = this.get(CONFIG.storage.keys.cachedData, null);
+            if (!cached) return null;
+            
+            const lastSync = this.get(CONFIG.storage.keys.lastSync, 0);
+            const now = Date.now();
+            
+            if (now - lastSync > CONFIG.storage.cacheExpiry) {
+                return null; // Caché expirado
+            }
+            
+            return cached;
+        } catch (error) {
+            console.error('Error obteniendo cache:', error);
+            return null;
         }
-        
-        return this.get(CONFIG.storage.keys.cachedData);
+    },
+
+    /**
+     * Limpia el caché y libera espacio
+     */
+    clearCache() {
+        try {
+            const result = this.remove(CONFIG.storage.keys.cachedData);
+            this.remove(CONFIG.storage.keys.lastSync);
+            console.log('🗑️ Cache limpiado correctamente');
+            return result;
+        } catch (error) {
+            console.error('Error limpiando cache:', error);
+            return false;
+        }
+    },
+    
+    /**
+     * Libera espacio en localStorage eliminando datos antiguos
+     */
+    clearOldData() {
+        try {
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                // Eliminar datos de más de 7 días
+                if (key && key.includes('history')) {
+                    try {
+                        const value = localStorage.getItem(key);
+                        const data = JSON.parse(value || '{}');
+                        if (data.timestamp && Date.now() - data.timestamp > 7 * 24 * 60 * 60 * 1000) {
+                            keysToRemove.push(key);
+                        }
+                    } catch (e) {}
+                }
+            }
+            
+            keysToRemove.forEach(key => this.remove(key));
+            console.log(`🗑️ Limpiados ${keysToRemove.length} registros antiguos`);
+            return true;
+        } catch (error) {
+            console.error('Error limpiando datos antiguos:', error);
+            return false;
+        }
+    },
+    
+    /**
+     * Obtiene el espacio disponible en localStorage
+     */
+    getStorageStats() {
+        try {
+            let totalSize = 0;
+            let count = 0;
+            for (let key in localStorage) {
+                if (localStorage.hasOwnProperty(key)) {
+                    totalSize += localStorage[key].length + key.length;
+                    count++;
+                }
+            }
+            const usedMB = totalSize / 1024 / 1024;
+            return {
+                used: usedMB.toFixed(2),
+                total: 5,
+                available: (5 - usedMB).toFixed(2),
+                itemCount: count
+            };
+        } catch (error) {
+            console.error('Error obteniendo estadísticas:', error);
+            return null;
+        }
     },
 
     /**
