@@ -467,14 +467,23 @@ const App = {
         if (format === 'OCR_TEXT') {
             console.log('📋 Texto OCR leído, mostrando modal de selección...');
             
-            // Extraer automáticamente números de 12 dígitos si existen
-            const number12Pattern = /\b\d{12}\b/g;
-            const numbers12 = code.match(number12Pattern) || [];
-            
+            // Extraer automáticamente números de 12+ dígitos
+            // Buscar primero en el texto si hay un bloque de "CÓDIGO SUGERIDO"
             let defaultSearch = '';
-            if (numbers12.length > 0) {
-                defaultSearch = numbers12[0];
-                console.log('⭐ Número de 12 dígitos detectado:', defaultSearch);
+            
+            // Buscar línea que contenga "CÓDIGO SUGERIDO" seguida del código
+            const suggestedMatch = code.match(/CÓDIGO SUGERIDO[^\n]*\n📌\s*(\d+)/);
+            if (suggestedMatch && suggestedMatch[1]) {
+                defaultSearch = suggestedMatch[1];
+                console.log('⭐ Código sugerido encontrado en OCR:', defaultSearch);
+            } else {
+                // Si no, buscar cualquier número de 12+ dígitos
+                const numberPattern = /\b(\d{12,})\b/g;
+                const matches = code.match(numberPattern);
+                if (matches && matches.length > 0) {
+                    defaultSearch = matches[0].substring(0, 12); // Tomar primeros 12 dígitos
+                    console.log('⭐ Número de 12+ dígitos detectado:', defaultSearch);
+                }
             }
             
             UI.showOCRSelectionModal(code, (selectedText) => {
@@ -484,8 +493,8 @@ const App = {
                     console.log('✅ Usuario confirmó búsqueda con texto:', selectedText);
                     console.log('🔢 Números extraídos:', cleanText);
                     
-                    // Usar el número de 12 dígitos si existe, sino usar la selección
-                    const searchCode = cleanText.match(/\d{12}/) || cleanText || selectedText;
+                    // Usar los números extraídos o el texto limpio
+                    const searchCode = cleanText || selectedText;
                     
                     UI.showToast(`🔍 Buscando: ${searchCode}`, 'info');
                     UI.showLastScanned(searchCode);
@@ -557,21 +566,64 @@ const App = {
             // Actualizar vista del historial
             this.updateHistoryView();
             
-            // Mostrar modal con resultado
-            UI.showProductModal(result, code, (rowIndex, observations) => {
-                this.updateInventory(rowIndex, observations);
-            });
-            
-            // Mostrar toast
-            if (result) {
-                UI.showToast(CONFIG.messages.productFound, 'success');
+            // Si no encontró, mostrar opción de agregar nuevo
+            if (!result) {
+                UI.showToast('⚠️ Producto no encontrado. ¿Deseas agregarlo?', 'warning');
+                UI.showProductModal(result, code, (rowIndex, observations) => {
+                    if (rowIndex === 'NEW') {
+                        // Agregar nuevo producto
+                        this.addNewProduct(code, observations);
+                    } else {
+                        this.updateInventory(rowIndex, observations);
+                    }
+                });
             } else {
-                UI.showToast(CONFIG.messages.productNotFound, 'warning');
+                // Mostrar modal con resultado
+                UI.showProductModal(result, code, (rowIndex, observations) => {
+                    this.updateInventory(rowIndex, observations);
+                });
+                UI.showToast(CONFIG.messages.productFound, 'success');
             }
             
         } catch (error) {
             console.error('Error searching product:', error);
             UI.showToast(CONFIG.messages.connectionError, 'error');
+        } finally {
+            UI.hideLoading();
+        }
+    },
+
+    /**
+     * Agrega un nuevo producto al inventario
+     * @param {string} code - Código del producto
+     * @param {Object} data - Datos del producto
+     */
+    async addNewProduct(code, data) {
+        UI.showLoading('Agregando nuevo producto...');
+        
+        try {
+            await SheetsAPI.addNewRow({
+                cod_patrim: code,
+                descripcion: data.descripcion || 'Nuevo producto',
+                marca: data.marca || '',
+                modelo: data.modelo || '',
+                operator: this.operator
+            });
+            
+            UI.showToast('✅ Producto agregado correctamente', 'success');
+            
+            // Actualizar caché
+            Storage.invalidateCache();
+            
+            // Refrescar datos
+            await SheetsAPI.fetchData();
+            
+            // Actualizar historial
+            this.updateHistoryView();
+            
+        } catch (error) {
+            console.error('Error adding product:', error);
+            UI.showToast('❌ Error al agregar producto: ' + error.message, 'error');
         } finally {
             UI.hideLoading();
         }

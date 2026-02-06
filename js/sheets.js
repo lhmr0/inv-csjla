@@ -310,6 +310,60 @@ const SheetsAPI = {
     },
 
     /**
+     * Agrega una nueva fila al sheet
+     * @param {Object} productData - Datos del producto: cod_patrim, descripcion, marca, modelo, operator
+     * @returns {Promise<number>} Índice de la nueva fila
+     */
+    async addNewRow(productData) {
+        const webAppUrl = Storage.getWebAppUrl();
+        
+        console.log('🆕 Agregando nuevo producto...');
+        console.log('📋 Datos:', productData);
+        
+        if (!webAppUrl) {
+            console.warn('⚠️ No hay Web App URL configurada. Actualizando solo localmente.');
+            return false;
+        }
+        
+        try {
+            const url = new URL(webAppUrl);
+            url.searchParams.set('action', 'addNewRow');
+            url.searchParams.set('sheetId', this.sheetId);
+            url.searchParams.set('sheetName', this.sheetName);
+            url.searchParams.set('cod_patrim', productData.cod_patrim);
+            url.searchParams.set('descripcion', productData.descripcion);
+            url.searchParams.set('marca', productData.marca);
+            url.searchParams.set('modelo', productData.modelo);
+            url.searchParams.set('operator', productData.operator);
+            
+            console.log('🔄 Enviando nueva fila a Web App...');
+            console.log('📍 URL COMPLETA:', url.toString());
+            console.log('📌 Parámetro action:', url.searchParams.get('action'));
+            
+            const response = await Promise.race([
+                fetch(url.toString(), {
+                    method: 'GET',
+                    mode: 'cors'
+                }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout')), 10000)
+                )
+            ]);
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Fila agregada correctamente:', result);
+                return result.data?.rowIndex || true;
+            } else {
+                throw new Error(`HTTP ${response.status}`);
+            }
+        } catch (error) {
+            console.error('❌ Error agregando nueva fila:', error);
+            throw error;
+        }
+    },
+
+    /**
      * Actualiza los datos locales
      * @param {number} rowIndex - Índice de la fila
      * @param {string} date - Fecha de inventario

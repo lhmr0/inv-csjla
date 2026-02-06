@@ -34,21 +34,46 @@
  * 7. Copia la URL y pégala en la app como Web App URL
  */
 
-/**
- * Maneja peticiones GET
- */
 function doGet(e) {
   try {
     // Si e es undefined (cuando se ejecuta manualmente desde el editor), retornar error
     if (!e) {
       Logger.log('⚠️  ADVERTENCIA: La función se ejecutó sin parámetros');
-      Logger.log('   Esto es normal al usar el botón ▶️ en el editor');
-      Logger.log('   Para probar, accede a: https://script.google.com/macros/d/{SCRIPT_ID}/usercurrentapp');
-      Logger.log('   Y agrega los parámetros como: ?sheetId=...&row=2&inventariado=SI');
       return createErrorResponse('Parámetros faltantes. Esta función debe ser llamada como Web App.');
     }
     
     const params = e.parameter;
+    const action = params.action;
+    
+    Logger.log('═══════════════════════════════════════════════════════');
+    Logger.log('🟢 NUEVA SOLICITUD - ' + new Date().toISOString());
+    Logger.log('📌 ACCIÓN: "' + action + '"');
+    Logger.log('📋 PARÁMETROS:', JSON.stringify(params));
+    Logger.log('═══════════════════════════════════════════════════════');
+    
+    // Determinar qué acción ejecutar
+    if (action && action === 'addNewRow') {
+      Logger.log('✅ Detectada acción: addNewRow');
+      return handleAddNewRow(params);
+    } else if (action && action === 'updateInventory') {
+      Logger.log('✅ Detectada acción: updateInventory');
+      return handleUpdateInventory(params);
+    } else {
+      Logger.log('ℹ️  Acción por defecto: updateInventory');
+      return handleUpdateInventory(params);
+    }
+  } catch (error) {
+    Logger.log('❌ ERROR GENERAL EN doGet:');
+    Logger.log('   Error: ' + error.toString());
+    Logger.log('   Stack: ' + error.stack);
+    return createErrorResponse(`Error del servidor: ${error.toString()}`);
+  }
+}
+
+/**
+ * Maneja la actualización de inventario
+ */
+function handleUpdateInventory(params) {
     
     Logger.log('═══════════════════════════════════════════════════════');
     Logger.log('🟢 INICIO DE SOLICITUD - ' + new Date().toISOString());
@@ -176,14 +201,6 @@ function doGet(e) {
       Logger.log('═══════════════════════════════════════════════════════');
       return createErrorResponse(`Error al actualizar la fila ${rowIndex}: ${updateError.toString()}`);
     }
-    
-  } catch (error) {
-    Logger.log('❌ ERROR GENERAL EN doGet:');
-    Logger.log('   Error: ' + error.toString());
-    Logger.log('   Stack: ' + error.stack);
-    Logger.log('═══════════════════════════════════════════════════════');
-    return createErrorResponse(`Error del servidor: ${error.toString()}`);
-  }
 }
 
 /**
@@ -191,6 +208,119 @@ function doGet(e) {
  */
 function doPost(e) {
   return doGet(e);
+}
+
+/**
+ * Agrega una nueva fila al sheet
+ */
+function handleAddNewRow(params) {
+  try {
+    Logger.log('═══════════════════════════════════════════════════════');
+    Logger.log('🆕 AGREGAR NUEVA FILA - ' + new Date().toISOString());
+    Logger.log('📝 Parámetros recibidos:', JSON.stringify(params));
+    
+    const sheetId = params.sheetId;
+    const sheetName = params.sheetName || 'Inventario';
+    const cod_patrim = params.cod_patrim;
+    const descripcion = params.descripcion;
+    const marca = params.marca || '';
+    const modelo = params.modelo || '';
+    const operator = params.operator || '';
+    
+    Logger.log('✏️  DATOS:');
+    Logger.log('   sheetId: ' + sheetId);
+    Logger.log('   sheetName: ' + sheetName);
+    Logger.log('   cod_patrim: ' + cod_patrim);
+    Logger.log('   descripcion: ' + descripcion);
+    Logger.log('   operator: ' + operator);
+    
+    // Validar parámetros
+    if (!sheetId || !cod_patrim || !descripcion) {
+      Logger.log('❌ ERROR: Parámetros faltantes');
+      return createErrorResponse('Parámetros faltantes: sheetId, cod_patrim, descripcion son requeridos');
+    }
+    
+    Logger.log('✅ Parámetros válidos');
+    
+    // Obtener acceso al spreadsheet
+    let spreadsheet;
+    try {
+      Logger.log('🔓 Abriendo spreadsheet...');
+      spreadsheet = SpreadsheetApp.openById(sheetId);
+      Logger.log('✅ Spreadsheet abierto');
+    } catch (error) {
+      Logger.log('❌ Error al abrir spreadsheet: ' + error.toString());
+      return createErrorResponse('No se pudo acceder al spreadsheet: ' + error.toString());
+    }
+    
+    // Obtener la hoja
+    let sheet;
+    try {
+      sheet = spreadsheet.getSheetByName(sheetName);
+      if (!sheet) {
+        Logger.log('❌ Hoja no encontrada: ' + sheetName);
+        return createErrorResponse('La hoja ' + sheetName + ' no existe');
+      }
+      Logger.log('✅ Hoja encontrada');
+    } catch (error) {
+      Logger.log('❌ Error obteniendo hoja: ' + error.toString());
+      return createErrorResponse('Error accediendo a la hoja: ' + error.toString());
+    }
+    
+    // Agregar nueva fila
+    try {
+      Logger.log('🔄 Agregando nueva fila...');
+      
+      // Obtener última fila
+      const lastRow = sheet.getLastRow();
+      const newRowIndex = lastRow + 1;
+      
+      Logger.log('📍 Nueva fila: ' + newRowIndex);
+      
+      // Completar datos (basado en la estructura de 21 columnas)
+      // J(10) = Código Patrimonio, K(11) = Descripción, L(12) = Marca, M(13) = Modelo
+      // S(19) = INVENTARIADO, T(20) = F_REGISTRO, U(21) = REGISTRADO_POR
+      
+      sheet.getRange(newRowIndex, 10).setValue(cod_patrim);      // J - Código Patrimonio
+      sheet.getRange(newRowIndex, 11).setValue(descripcion);     // K - Descripción
+      sheet.getRange(newRowIndex, 12).setValue(marca);           // L - Marca
+      sheet.getRange(newRowIndex, 13).setValue(modelo);          // M - Modelo
+      sheet.getRange(newRowIndex, 19).setValue('SI');            // S - INVENTARIADO
+      sheet.getRange(newRowIndex, 20).setValue(new Date().toLocaleString('es-ES')); // T - F_REGISTRO
+      sheet.getRange(newRowIndex, 21).setValue(operator);        // U - REGISTRADO_POR
+      
+      Logger.log('✅ Fila agregada correctamente');
+      Logger.log('   Fila: ' + newRowIndex);
+      Logger.log('   Código: ' + cod_patrim);
+      Logger.log('   Descripción: ' + descripcion);
+      
+      const successData = {
+        message: 'Nuevo bien agregado correctamente',
+        rowIndex: newRowIndex,
+        cod_patrim: cod_patrim,
+        descripcion: descripcion,
+        timestamp: new Date().toISOString(),
+        status: 'success'
+      };
+      
+      Logger.log('📤 Enviando respuesta exitosa...');
+      Logger.log('═══════════════════════════════════════════════════════');
+      
+      return createSuccessResponse(successData);
+      
+    } catch (addError) {
+      Logger.log('❌ ERROR AL AGREGAR FILA:');
+      Logger.log('   Error: ' + addError.toString());
+      Logger.log('   Stack: ' + addError.stack);
+      Logger.log('═══════════════════════════════════════════════════════');
+      return createErrorResponse('Error al agregar fila: ' + addError.toString());
+    }
+  } catch (error) {
+    Logger.log('❌ ERROR EN handleAddNewRow:');
+    Logger.log('   Error: ' + error.toString());
+    Logger.log('═══════════════════════════════════════════════════════');
+    return createErrorResponse('Error: ' + error.toString());
+  }
 }
 
 /**

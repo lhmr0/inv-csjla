@@ -273,8 +273,16 @@ const UI = {
                     <h3>Bien No Encontrado</h3>
                     <p>El código de patrimonio <strong>${code}</strong> no existe en el inventario.</p>
                     <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
-                        Verifique que el código sea correcto o agregue el bien al inventario en Google Sheets.
+                        ¿Deseas agregarlo como un nuevo bien?
                     </p>
+                    <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+                        <button id="btnAddNewProduct" class="btn btn-primary btn-block">
+                            ➕ Agregar Como Nuevo Bien
+                        </button>
+                        <button id="btnCancelSearch" class="btn btn-secondary btn-block">
+                            ❌ Cancelar
+                        </button>
+                    </div>
                 </div>
             `;
         }
@@ -290,6 +298,24 @@ const UI = {
             btnUpdate.addEventListener('click', () => {
                 onUpdate(result.rowIndex, '');
                 this.closeModal();
+            });
+            
+            btnCancel.addEventListener('click', () => {
+                this.closeModal();
+            });
+        } else {
+            // Cuando no se encuentra, mostrar opción de agregar
+            const btnAddNew = document.getElementById('btnAddNewProduct');
+            const btnCancel = document.getElementById('btnCancelSearch');
+            
+            btnAddNew.addEventListener('click', () => {
+                this.closeModal();
+                // Mostrar modal para agregar nuevo producto
+                this.showAddNewProductModal(code, (rowIndex, data) => {
+                    if (rowIndex === 'NEW' && data) {
+                        onUpdate('NEW', data);
+                    }
+                });
             });
             
             btnCancel.addEventListener('click', () => {
@@ -474,10 +500,12 @@ const UI = {
                     <div class="modal-body">
                         <p class="ocr-instruction">Selecciona o edita el código que deseas buscar:</p>
                         ${suggestedCode ? `
-                            <div class="ocr-suggested-code">
-                                <strong>⭐ Código sugerido (12 dígitos) - Editable:</strong>
-                                <input type="text" id="suggestedCodeInput" class="suggested-code-input" maxlength="20" placeholder="Edita el código aquí">
-                                <small>Puedes editar el código si cometió errores en la lectura</small>
+                            <div class="ocr-suggested-code" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px; border-radius: 8px; color: white; margin-bottom: 15px;">
+                                <strong style="font-size: 1.1rem;">✨ Código Detectado - 12 Dígitos</strong>
+                                <div style="margin-top: 10px;">
+                                    <input type="text" id="suggestedCodeInput" class="suggested-code-input" value="${suggestedCode}" maxlength="20" placeholder="Edita el código aquí" style="background: white; color: #1F2937; font-weight: bold; font-size: 1.1rem; text-align: center; padding: 10px; border-radius: 6px; border: 2px solid #667eea;">
+                                </div>
+                                <small style="display: block; margin-top: 8px; opacity: 0.9;">💡 Presiona Enter o haz click en "Buscar" para confirmar</small>
                             </div>
                         ` : ''}
                         <div class="ocr-text-container">
@@ -499,8 +527,8 @@ const UI = {
                         <button id="ocrCancelBtn" class="btn btn-secondary">
                             ❌ Cancelar
                         </button>
-                        <button id="ocrConfirmBtn" class="btn btn-primary">
-                            ✅ Buscar Seleccionado
+                        <button id="ocrConfirmBtn" class="btn btn-primary" ${suggestedCode ? 'style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: bold;"' : ''}>
+                            ${suggestedCode ? '✅ Buscar Código' : '✅ Buscar Seleccionado'}
                         </button>
                     </div>
                 </div>
@@ -512,7 +540,7 @@ const UI = {
         const textArea = document.getElementById('ocrTextArea');
         const suggestedInput = document.getElementById('suggestedCodeInput');
         
-        // Si hay código sugerido, establecer como valor editable
+        // Si hay código sugerido, establecer como valor editable y preparar para confirm
         if (suggestedCode && suggestedInput) {
             suggestedInput.value = suggestedCode;
             suggestedInput.focus();
@@ -563,7 +591,7 @@ const UI = {
             let suggestedInputElement = document.getElementById('suggestedCodeInput');
             if (suggestedInputElement && suggestedInputElement.value.trim()) {
                 const suggestedCode = suggestedInputElement.value.trim();
-                console.log('✅ Usando código sugerido editado:', suggestedCode);
+                console.log('✅ Usando código sugerido:', suggestedCode);
                 modal.style.display = 'none';
                 onConfirm(suggestedCode);
                 return;
@@ -680,6 +708,116 @@ const UI = {
 
         // Permitir confirmar con Enter
         codeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                confirmBtn.click();
+            }
+        });
+
+        // Cancelar
+        const closeModal = () => {
+            modal.style.display = 'none';
+            onConfirm(null);
+        };
+
+        closeBtn.onclick = closeModal;
+        cancelBtn.onclick = closeModal;
+
+        // Cerrar al hacer click fuera del modal
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        };
+
+        // Mostrar modal
+        modal.style.display = 'flex';
+    },
+
+    /**
+     * Muestra un modal para agregar un nuevo producto
+     * @param {string} code - Código del producto
+     * @param {Function} onConfirm - Callback cuando se confirma
+     */
+    showAddNewProductModal(code, onConfirm) {
+        // Crear modal si no existe
+        let modal = document.getElementById('addNewProductModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'addNewProductModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>➕ Agregar Nuevo Producto</h3>
+                        <button class="modal-close" aria-label="Cerrar">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="color: #6B7280; margin-bottom: 1rem;">El producto no fue encontrado. Completa los datos para agregarlo:</p>
+                        
+                        <div class="form-group">
+                            <label for="newProductCode">Código de Patrimonio:</label>
+                            <input type="text" id="newProductCode" class="form-control" readonly placeholder="Código detectado">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="newProductDesc">Descripción/Denominación: <span style="color: red;">*</span></label>
+                            <input type="text" id="newProductDesc" class="form-control" placeholder="Ej: Escritorio de metal" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="newProductMarca">Marca:</label>
+                            <input type="text" id="newProductMarca" class="form-control" placeholder="Ej: Samsung">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="newProductModelo">Modelo:</label>
+                            <input type="text" id="newProductModelo" class="form-control" placeholder="Ej: 55-UHD">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="addNewProductCancelBtn" class="btn btn-secondary">
+                            ❌ Cancelar
+                        </button>
+                        <button id="addNewProductConfirmBtn" class="btn btn-primary">
+                            ✅ Agregar Producto
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Establecer código
+        document.getElementById('newProductCode').value = code;
+        document.getElementById('newProductDesc').focus();
+
+        // Elementos de control
+        const closeBtn = modal.querySelector('.modal-close');
+        const cancelBtn = document.getElementById('addNewProductCancelBtn');
+        const confirmBtn = document.getElementById('addNewProductConfirmBtn');
+        const descInput = document.getElementById('newProductDesc');
+
+        // Confirmar
+        confirmBtn.onclick = () => {
+            const desc = descInput.value.trim();
+            
+            if (!desc) {
+                this.showToast('⚠️ La descripción es obligatoria', 'warning');
+                return;
+            }
+            
+            const data = {
+                descripcion: desc,
+                marca: document.getElementById('newProductMarca').value.trim(),
+                modelo: document.getElementById('newProductModelo').value.trim()
+            };
+            
+            modal.style.display = 'none';
+            onConfirm('NEW', data);
+        };
+
+        // Permitir confirmar con Enter
+        descInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 confirmBtn.click();
             }

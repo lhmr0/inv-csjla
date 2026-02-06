@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico - Sistema de Inventario</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #1F2937;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6B7280;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #F9FAFB;
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+        }
+        .section h2 {
+            color: #1F2937;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+        .check-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #E5E7EB;
+        }
+        .check-icon {
+            font-size: 1.2rem;
+            margin-right: 12px;
+            min-width: 24px;
+        }
+        .check-content {
+            flex: 1;
+        }
+        .check-label {
+            font-weight: 500;
+            color: #1F2937;
+            margin-bottom: 4px;
+        }
+        .check-value {
+            font-size: 0.9rem;
+            color: #6B7280;
+            word-break: break-all;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+        .check-value.success {
+            color: #059669;
+        }
+        .check-value.error {
+            color: #DC2626;
+        }
+        .check-value.warning {
+            color: #D97706;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: #E5E7EB;
+            color: #1F2937;
+        }
+        .btn-secondary:hover {
+            background: #D1D5DB;
+        }
+        .output {
+            background: #000;
+            color: #0F0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #E5E7EB;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Diagnóstico del Sistema de Inventario</h1>
+        <p class="subtitle">Verifica la configuración y conexiones del sistema</p>
+
+        <!-- Configuración -->
+        <div class="section">
+            <h2>📋 Configuración</h2>
+            <div class="check-item">
+                <div class="check-icon">📍</div>
+                <div class="check-content">
+                    <div class="check-label">Sheet ID</div>
+                    <div class="check-value" id="sheetId">Cargando...</div>
+                </div>
+            </div>
+            <div class="check-item">
+                <div class="check-icon">📄</div>
+                <div class="check-content">
+                    <div class="check-label">Sheet Name</div>
+                    <div class="check-value" id="sheetName">Cargando...</div>
+                </div>
+            </div>
+            <div class="check-item">
+                <div class="check-icon">🌐</div>
+                <div class="check-content">
+                    <div class="check-label">Web App URL</div>
+                    <div class="check-value" id="webAppUrl">Cargando...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conexión a Google Sheets -->
+        <div class="section">
+            <h2>🔗 Conexión a Google Sheets</h2>
+            <div class="check-item">
+                <div class="check-icon" id="sheetsIcon">⏳</div>
+                <div class="check-content">
+                    <div class="check-label">Acceso al Sheet</div>
+                    <div class="check-value" id="sheetsStatus">Verificando...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conexión a Web App -->
+        <div class="section">
+            <h2>🚀 Conexión a Web App (Google Apps Script)</h2>
+            <div class="check-item">
+                <div class="check-icon" id="webAppIcon">⏳</div>
+                <div class="check-content">
+                    <div class="check-label">Acceso al Web App</div>
+                    <div class="check-value" id="webAppStatus">Verificando...</div>
+                </div>
+            </div>
+            <div id="webAppResponse" style="display: none;">
+                <div class="check-item">
+                    <div class="check-icon">📨</div>
+                    <div class="check-content">
+                        <div class="check-label">Respuesta del servidor</div>
+                        <div class="output" id="webAppResponseContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="section">
+            <h2>⚙️ Acciones</h2>
+            <div class="actions">
+                <button class="btn-primary" onclick="runFullDiagnostic()">
+                    🔄 Ejecutar Diagnóstico Completo
+                </button>
+                <button class="btn-secondary" onclick="testWebApp()">
+                    🧪 Probar Web App
+                </button>
+                <button class="btn-secondary" onclick="viewConfig()">
+                    👁️ Ver Configuración
+                </button>
+            </div>
+        </div>
+
+        <!-- Instrucciones -->
+        <div class="section" style="border-left-color: #D97706; background: #FFFBEB;">
+            <h2>📖 Instrucciones para Corregir</h2>
+            <ol style="margin-left: 20px; color: #92400E;">
+                <li><strong>Si Web App no responde:</strong>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li>Ve a tu Google Sheet → Extensiones → Apps Script</li>
+                        <li>Copia todo el código de <code>google-apps-script.gs</code></li>
+                        <li>Pega en el editor de Apps Script</li>
+                        <li>Guarda (Ctrl+S)</li>
+                        <li>Ve a "Desplegar" → "Nueva implementación"</li>
+                        <li>Tipo: "Aplicación web"</li>
+                        <li>Ejecutar como: Tu cuenta</li>
+                        <li>Permitir acceso: "Cualquiera"</li>
+                        <li>Copia la URL y pégala en config.js línea 9 como webAppUrl</li>
+                    </ul>
+                </li>
+                <li><strong>Si Sheet no responde:</strong>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li>Verifica que el Sheet ID sea correcto</li>
+                        <li>Verifica que el Sheet esté compartido públicamente (O con "Cualquiera con el enlace")</li>
+                        <li>Verifica que exista la hoja "Inventario"</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/storage.js"></script>
+    <script>
+        async function runFullDiagnostic() {
+            console.clear();
+            console.log('🔧 Iniciando diagnóstico completo...');
+            
+            // Cargar configuración
+            const sheetId = CONFIG?.defaults?.sheetId;
+            const sheetName = CONFIG?.defaults?.sheetName || 'Hoja1';
+            const webAppUrl = CONFIG?.defaults?.webAppUrl;
+            
+            // Mostrar configuración
+            document.getElementById('sheetId').textContent = sheetId || '❌ No configurado';
+            document.getElementById('sheetName').textContent = sheetName;
+            document.getElementById('webAppUrl').textContent = webAppUrl 
+                ? (webAppUrl.substring(0, 80) + '...') 
+                : '❌ No configurado';
+            
+            // Verificar Sheet
+            await verifySheet(sheetId, sheetName);
+            
+            // Verificar Web App
+            if (webAppUrl) {
+                await verifyWebApp(webAppUrl, sheetId);
+            }
+        }
+
+        async function verifySheet(sheetId, sheetName) {
+            const icon = document.getElementById('sheetsIcon');
+            const status = document.getElementById('sheetsStatus');
+            
+            try {
+                icon.textContent = '⏳';
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+                
+                const response = await Promise.race([
+                    fetch(csvUrl),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+                ]);
+                
+                if (response.ok) {
+                    const text = await response.text();
+                    const lines = text.split('\n').length;
+                    icon.textContent = '✅';
+                    status.innerHTML = `<span class="success">✅ Conectado correctamente</span><br>Filas: ${lines}`;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                icon.textContent = '❌';
+                status.innerHTML = `<span class="error">❌ Error: ${error.message}</span><br>Verifica que el Sheet esté compartido públicamente`;
+            }
+        }
+
+        async function verifyWebApp(webAppUrl, sheetId) {
+            const icon = document.getElementById('webAppIcon');
+            const status = document.getElementById('webAppStatus');
+            const responseDiv = document.getElementById('webAppResponse');
+            const responseContent = document.getElementById('webAppResponseContent');
+            
+            try {
+                icon.textContent = '⏳';
+                status.textContent = 'Probando conexión...';
+                
+                const testUrl = new URL(webAppUrl);
+                testUrl.searchParams.set('sheetId', sheetId);
+                testUrl.searchParams.set('sheetName', 'Inventario');
+                testUrl.searchParams.set('row', '2');
+                testUrl.searchParams.set('inventariado', 'SI');
+                testUrl.searchParams.set('f_registro', new Date().toLocaleString());
+                testUrl.searchParams.set('registrado_por', 'TEST');
+                
+                console.log('📤 Enviando solicitud de prueba a:', testUrl.toString().substring(0, 100) + '...');
+                
+                const response = await Promise.race([
+                    fetch(testUrl.toString(), {
+                        method: 'GET',
+                        mode: 'cors'
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+                ]);
+                
+                const text = await response.text();
+                
+                icon.textContent = response.ok ? '✅' : '⚠️';
+                status.innerHTML = `<span class="${response.ok ? 'success' : 'warning'}">
+                    ${response.ok ? '✅ Web App respondió correctamente' : '⚠️ Web App respondió pero con status ' + response.status}
+                </span>`;
+                
+                responseDiv.style.display = 'block';
+                responseContent.textContent = text.substring(0, 1000);
+                
+            } catch (error) {
+                icon.textContent = '❌';
+                status.innerHTML = `<span class="error">❌ Error: ${error.message}</span><br>Asegúrate que el Web App URL sea válido y esté desplegado`;
+                console.error('❌ Error al conectar con Web App:', error);
+            }
+        }
+
+        async function testWebApp() {
+            const webAppUrl = CONFIG?.defaults?.webAppUrl;
+            if (!webAppUrl) {
+                alert('❌ Web App URL no configurada');
+                return;
+            }
+            await verifyWebApp(webAppUrl, CONFIG?.defaults?.sheetId);
+        }
+
+        function viewConfig() {
+            console.log('📋 Configuración actual:', CONFIG);
+            alert('Abre la consola (F12) para ver la configuración completa');
+        }
+
+        // Ejecutar diagnóstico al cargar
+        window.addEventListener('load', () => {
+            setTimeout(runFullDiagnostic, 500);
+        });
+    </script>
+</body>
+</html>

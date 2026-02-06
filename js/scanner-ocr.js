@@ -400,7 +400,7 @@ const BarcodeScanner = {
 
     /**
      * Extrae números del texto OCR y prioriza los de 12 caracteres
-     * Formato esperado: 746406260465 (12 dígitos)
+     * Formato esperado: 746406260465 (12 dígitos mínimo)
      * @param {string} text - Texto extraído por OCR
      * @returns {string} Texto formateado con prioridad a 12 dígitos
      */
@@ -414,39 +414,71 @@ const BarcodeScanner = {
         }
 
         // Separar números por longitud
-        const numbers12 = allNumbers.filter(n => n.length === 12);
-        const numbersOther = allNumbers.filter(n => n.length !== 12);
+        // MÍNIMO 12 dígitos para considerarse código válido
+        const MINIMUM_CODE_LENGTH = 12;
+        
+        const numbersValid = allNumbers.filter(n => n.length >= MINIMUM_CODE_LENGTH);
+        const numbersTooShort = allNumbers.filter(n => n.length < MINIMUM_CODE_LENGTH);
+        
+        // Dentro de los válidos, priorizar exactamente 12
+        const numbers12 = numbersValid.filter(n => n.length === 12);
+        const numbersLonger = numbersValid.filter(n => n.length > 12);
 
-        console.log('🔢 Números encontrados:');
-        console.log('   De 12 dígitos:', numbers12);
-        console.log('   Otros:', numbersOther);
+        console.log('🔢 ANÁLISIS DE NÚMEROS:');
+        console.log('   Exactamente 12 dígitos:', numbers12);
+        console.log('   De 13+ dígitos:', numbersLonger);
+        console.log('   Menores a 12:', numbersTooShort);
 
-        // Priorizar: primero los de 12 dígitos, luego los demás
-        let prioritized = '';
+        // Prioridad:
+        // 1. Números de exactamente 12 dígitos
+        // 2. Números de 13+ dígitos (podría haber espacios o caracteres extra)
+        // 3. Números cortos (menor a 12)
+        let suggestedCode = '';
+        let confidenceLevel = '';
         
         if (numbers12.length > 0) {
-            // Usar el primer número de 12 dígitos encontrado
-            prioritized = numbers12[0];
-            console.log('⭐ Priorizado (12 dígitos):', prioritized);
-        } else if (numbersOther.length > 0) {
-            // Si no hay de 12, usar el más largo
-            const longest = numbersOther.reduce((a, b) => a.length > b.length ? a : b);
-            prioritized = longest;
-            console.log('⭐ Priorizado (más largo):', prioritized);
+            suggestedCode = numbers12[0];
+            confidenceLevel = '🎯 CÓDIGO SUGERIDO (12 dígitos exactos)';
+            console.log('✅ Código detectado:', suggestedCode, '(confianza: ALTA)');
+        } else if (numbersLonger.length > 0) {
+            // Si hay números más largos, extraer los primeros 12 dígitos
+            suggestedCode = numbersLonger[0].substring(0, 12);
+            confidenceLevel = '⚠️ CÓDIGO SUGERIDO (extraído de ' + numbersLonger[0].length + ' dígitos)';
+            console.log('✅ Código sugerido:', suggestedCode, '(confianza: MEDIA - se extrajeron primeros 12 de', numbersLonger[0].length, 'dígitos)');
+        } else if (numbersTooShort.length > 0) {
+            // Si solo hay números cortos, sugerir el más largo
+            const longest = numbersTooShort.reduce((a, b) => a.length > b.length ? a : b);
+            suggestedCode = longest;
+            confidenceLevel = '⚠️ CÓDIGO INCOMPLETO (' + longest.length + ' dígitos, se esperan 12+)';
+            console.log('⚠️ Código incompleto:', suggestedCode, '(' + longest.length + ' dígitos)');
         }
 
-        // Retornar formato para mostrar al usuario:
-        // "Números encontrados:\n[lista con prioridad]"
+        // Retornar formato para mostrar al usuario
         const displayText = [];
+        
+        if (suggestedCode) {
+            displayText.push('═════════════════════════════════════');
+            displayText.push(confidenceLevel);
+            displayText.push('📌 ' + suggestedCode);
+            displayText.push('═════════════════════════════════════\n');
+        }
+        
         if (numbers12.length > 0) {
-            displayText.push('🎯 Números de 12 dígitos (PRIORIDAD):\n' + numbers12.join('\n'));
+            displayText.push('🎯 Números de 12 dígitos (EXACTOS):\n' + numbers12.join('\n'));
         }
-        if (numbersOther.length > 0) {
-            displayText.push('Otros números:\n' + numbersOther.join('\n'));
+        
+        if (numbersLonger.length > 0) {
+            displayText.push('\n📏 Números de 13+ dígitos:\n' + numbersLonger.map(n => n + ' (' + n.length + ' dígitos)').join('\n'));
         }
-        displayText.push('\nTexto original:\n' + text);
+        
+        if (numbersTooShort.length > 0) {
+            displayText.push('\n❌ Números incompletos (< 12):\n' + numbersTooShort.join('\n'));
+        }
+        
+        displayText.push('\n─────────────────────────────────────');
+        displayText.push('📋 Texto OCR original:\n' + text);
 
-        return displayText.join('\n\n');
+        return displayText.join('\n');
     },
 
     /**
