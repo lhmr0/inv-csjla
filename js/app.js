@@ -292,11 +292,6 @@ const App = {
             console.error('❌ Error en captura y análisis:', error);
             UI.showToast('❌ Error al capturar frame', 'error');
         }
-
-        } catch (error) {
-            console.error('❌ Error capturando frame:', error);
-            UI.showToast('Error: ' + error.message, 'error');
-        }
     },
 
     /**

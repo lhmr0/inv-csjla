@@ -43,46 +43,18 @@ const SheetsAPI = {
      * @returns {Promise<Array>} Datos del sheet
      */
     async fetchData() {
-        // URL usando el endpoint de exportación que no tiene restricciones CORS tan estrictas
-        const csvUrl = `https://docs.google.com/spreadsheets/d/${this.sheetId}/export?format=csv&gid=0`;
-        // Alternativa: usar la API de Google Visualization que es más permisiva
-        const apiUrl = `https://docs.google.com/spreadsheets/d/${this.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.sheetName)}`;
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${this.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.sheetName)}`;
         
         try {
             console.log('🌐 Intentando obtener datos de Google Sheets...');
             console.log('📍 URL:', csvUrl);
             
-            let response;
-            
-            // Intentar con el endpoint de exportación primero (sin restricciones CORS tan estrictas)
-            try {
-                response = await fetch(csvUrl, {
-                    method: 'GET',
-                    mode: 'cors',
-                    headers: {
-                        'Accept': 'text/csv'
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+            const response = await fetch(csvUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'text/csv'
                 }
-            } catch (corsError) {
-                console.log('⚠️ Endpoint de exportación bloqueado, intentando con API de Visualization...');
-                
-                // Fallback a la API de Google Visualization
-                response = await fetch(apiUrl, {
-                    method: 'GET',
-                    mode: 'cors',
-                    headers: {
-                        'Accept': 'text/csv'
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: No se pudo acceder al documento. Verifique que esté compartido públicamente.`);
-                }
-            }
+            });
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: No se pudo acceder al documento. Verifique que esté compartido públicamente.`);
@@ -114,12 +86,6 @@ const SheetsAPI = {
         } catch (error) {
             console.error('❌ Error fetching sheet data:', error);
             console.log('📋 Intentando usar datos cacheados...');
-            
-            // Diagnosticar el tipo de error
-            if (error.message && error.message.includes('CORS')) {
-                console.warn('⚠️ Error de CORS detectado - Google Sheets rechaza la solicitud por seguridad');
-                console.log('💡 Esto es NORMAL - La app manejará esto automáticamente');
-            }
             
             // Intentar usar datos cacheados
             const cached = Storage.getCachedData();
