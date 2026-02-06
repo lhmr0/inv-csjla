@@ -598,5 +598,95 @@ const UI = {
         // Mostrar modal
         modal.style.display = 'flex';
         updateSelectionInfo();
+    },
+
+    /**
+     * Muestra un modal con el código detectado para que pueda editarlo
+     * @param {string} detectedCode - Código detectado por el escáner
+     * @param {Function} onConfirm - Callback con el código confirmado/editado
+     * @param {string} originalCode - Código original (para referencia)
+     */
+    showEditableCodeModal(detectedCode, onConfirm, originalCode = '') {
+        // Crear modal si no existe
+        let modal = document.getElementById('editableCodeModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'editableCodeModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content editable-code">
+                    <div class="modal-header">
+                        <h3>✏️ Editar Código Detectado</h3>
+                        <button class="modal-close" aria-label="Cerrar">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="code-instruction">El sistema detectó un código. Si hay errores, edítalo aquí:</p>
+                        <div class="code-input-container">
+                            <label for="editableCodeInput">Código (12 dígitos):</label>
+                            <input type="text" id="editableCodeInput" class="editable-code-input" maxlength="20" placeholder="Ingrese o edite el código">
+                            <small class="code-input-helper">💡 Puedes editar los dígitos si la lectura fue incorrecta</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="editableCodeCancelBtn" class="btn btn-secondary">
+                            ❌ Cancelar
+                        </button>
+                        <button id="editableCodeConfirmBtn" class="btn btn-primary">
+                            ✅ Confirmar y Buscar
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Actualizar valor del input
+        const codeInput = document.getElementById('editableCodeInput');
+        codeInput.value = detectedCode || originalCode;
+        codeInput.focus();
+        codeInput.select();
+
+        // Elementos de control
+        const closeBtn = modal.querySelector('.modal-close');
+        const cancelBtn = document.getElementById('editableCodeCancelBtn');
+        const confirmBtn = document.getElementById('editableCodeConfirmBtn');
+
+        // Confirmar código
+        confirmBtn.onclick = () => {
+            const editedCode = codeInput.value.trim();
+            
+            if (editedCode) {
+                modal.style.display = 'none';
+                onConfirm(editedCode);
+            } else {
+                this.showToast('⚠️ Ingresa un código válido', 'warning');
+            }
+        };
+
+        // Permitir confirmar con Enter
+        codeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                confirmBtn.click();
+            }
+        });
+
+        // Cancelar
+        const closeModal = () => {
+            modal.style.display = 'none';
+            onConfirm(null);
+        };
+
+        closeBtn.onclick = closeModal;
+        cancelBtn.onclick = closeModal;
+
+        // Cerrar al hacer click fuera del modal
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        };
+
+        // Mostrar modal
+        modal.style.display = 'flex';
     }
 };

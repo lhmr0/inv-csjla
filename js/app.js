@@ -496,11 +496,21 @@ const App = {
                 }
             }, defaultSearch);
         } else {
-            // Comportamiento normal para códigos de barras tradicionales
-            UI.showToast(`📦 Código detectado: ${code}`, 'info');
-            UI.showLastScanned(code);
-            // Buscar producto
-            await this.searchAndShowProduct(code);
+            // Para códigos de barras tradicionales, mostrar campo editable
+            console.log('🔧 Código de barras detectado, mostrando campo editable...');
+            
+            // Mostrar el código en un campo editable para que el usuario pueda corregir
+            UI.showEditableCodeModal(code, (editedCode) => {
+                if (editedCode && editedCode.trim() !== '') {
+                    console.log('✅ Usuario confirmó código editado:', editedCode);
+                    UI.showToast(`📦 Buscando: ${editedCode}`, 'info');
+                    UI.showLastScanned(editedCode);
+                    this.searchAndShowProduct(editedCode);
+                } else {
+                    console.log('❌ Usuario canceló la búsqueda');
+                    UI.showToast('Búsqueda cancelada', 'warning');
+                }
+            }, code);
         }
     },
 
