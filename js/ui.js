@@ -560,9 +560,9 @@ const UI = {
         // Confirmar búsqueda
         confirmBtn.onclick = () => {
             // Primero, intentar usar el código sugerido editado si existe
-            const suggestedInput = document.getElementById('suggestedCodeInput');
-            if (suggestedInput && suggestedInput.value.trim()) {
-                const suggestedCode = suggestedInput.value.trim();
+            let suggestedInputElement = document.getElementById('suggestedCodeInput');
+            if (suggestedInputElement && suggestedInputElement.value.trim()) {
+                const suggestedCode = suggestedInputElement.value.trim();
                 console.log('✅ Usando código sugerido editado:', suggestedCode);
                 modal.style.display = 'none';
                 onConfirm(suggestedCode);
@@ -585,9 +585,9 @@ const UI = {
         };
 
         // Permitir confirmar con Enter en el input de código sugerido
-        const suggestedInput = document.getElementById('suggestedCodeInput');
-        if (suggestedInput) {
-            suggestedInput.addEventListener('keypress', (e) => {
+        let suggestedInputElement = document.getElementById('suggestedCodeInput');
+        if (suggestedInputElement) {
+            suggestedInputElement.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     confirmBtn.click();
                 }

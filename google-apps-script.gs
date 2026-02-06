@@ -228,8 +228,9 @@ function createErrorResponse(message) {
  * Nota: Google Sheets maneja CORS automáticamente cuando se despliega como Web App
  */
 function doOptions(e) {
-  return ContentService.createTextOutput('')
-    .setMimeType(ContentService.MimeType.TEXT);
+  var response = ContentService.createTextOutput('');
+  response.setMimeType(ContentService.MimeType.TEXT);
+  return response;
 }
 
 /**

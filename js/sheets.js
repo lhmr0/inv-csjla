@@ -309,33 +309,6 @@ const SheetsAPI = {
         }
     },
 
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('✅ Resultado:', result);
-                    // Actualizar datos locales
-                    this.updateLocalData(rowIndex, dateStr, operator);
-                    Storage.invalidateCache();
-                    return true;
-                } else {
-                    console.warn('⚠️ Respuesta del servidor:', response.status);
-                    // Aunque falle, actualizar localmente
-                    this.updateLocalData(rowIndex, dateStr, operator);
-                    return true;
-                }
-            } catch (error) {
-                console.error('❌ Error enviando actualización:', error);
-                console.warn('ℹ️ Continuando con actualizaciones locales...');
-                // Continuar sin Web App (es normal si hay CORS desde GitHub Pages)
-                this.updateLocalData(rowIndex, dateStr, operator);
-                return true;
-            }
-        } else {
-            console.log('⚠️ No se configuró Web App URL. Actualizando solo localmente.');
-            this.updateLocalData(rowIndex, dateStr, operator);
-            return true;
-        }
-    },
-
     /**
      * Actualiza los datos locales
      * @param {number} rowIndex - Índice de la fila
