@@ -55,27 +55,48 @@ Invalid Sheet ID
 
 ---
 
-### 3. 🌐 Problemas de Red / Firewall
+### 3. 🌐 Error CORS (Cross-Origin Resource Sharing) ⚠️ IMPORTANTE
 
 **Síntoma**:
 ```
-CORS policy error
-Network error
+CORS policy: No 'Access-Control-Allow-Origin' header
+Access-Control-Allow-Credentials: true
+Network error: cors
 ```
 
-**Solución**:
-1. Verifica conexión a internet
-2. Intenta con WiFi diferente o datos móviles
-3. Desactiva VPN si tienes
-4. Desactiva extensiones del navegador
+**Causa**:
+- Google Sheets no permite solicitudes CORS desde navegadores por seguridad
+- Los headers `Access-Control-Allow-Origin` NO se pueden forzar desde JavaScript
+
+**Solución Implementada en v2.1**:
+1. ✅ La app ahora intenta MÚLTIPLES ENDPOINTS:
+   - Endpoint `/export?format=csv` (menos restrictivo)
+   - Endpoint `/gviz/tq?tqx=out:csv` (API de Visualization)
+   - Fallback a datos cacheados (offline mode)
+
+2. ✅ La app NO falla aunque hay CORS:
+   ```
+   ⚠️ Endpoint de exportación bloqueado
+   → Intentando con API de Visualization...
+   ✅ Datos cargados: 150 filas
+   ```
 
 **Verificación**:
 ```javascript
-// En la consola (F12):
-fetch('https://docs.google.com/spreadsheets/d/1cIPjvg6Kfi79d6810JosSKCk4HSYcxqNYpTtdZ28bYQ/gviz/tq?tqx=out:csv')
+// En la consola (F12) - esto puede fallar por CORS, pero la app lo maneja:
+fetch('https://docs.google.com/spreadsheets/d/[ID]/export?format=csv&gid=0')
   .then(r => r.text())
-  .then(t => console.log(t.substring(0, 100)))
+  .then(t => console.log('✅ ' + t.substring(0, 50)))
+  .catch(e => console.log('⚠️ CORS bloqueado (esperado):', e.message))
 ```
+
+**Si Aun Así Falla**:
+1. Verifica conexión a internet
+2. Intenta con WiFi diferente o datos móviles
+3. Desactiva VPN si tienes
+4. Desactiva extensiones del navegador (especialmente bloqueadores CORS)
+5. Abre en pestaña privada/incógnita
+6. Revisa que el Google Sheet esté compartido públicamente (ver #1)
 
 ---
 

@@ -1,6 +1,23 @@
 # ✅ Solución - Login Bloqueado
 
-## 🔍 Problema Identificado
+## � ERROR DE CORS RESUELTO (v2.1)
+
+⚠️ **Si ves error de CORS en la consola (F12)**:
+```
+CORS policy: No 'Access-Control-Allow-Origin' header
+Network error: cors
+```
+
+✅ **Esto ahora está manejado automáticamente**:
+- ✅ La app intenta múltiples endpoints
+- ✅ Usa datos cacheados como fallback
+- ✅ **Nunca bloquea el login**
+
+**Ver**: [`SOLUCION_CORS.md`](SOLUCION_CORS.md) para detalles completos
+
+---
+
+## �🔍 Problema Identificado
 
 La aplicación se quedaba en el login sin avanzar. Las causas principales:
 
