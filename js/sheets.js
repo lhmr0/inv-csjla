@@ -229,35 +229,85 @@ const SheetsAPI = {
 
         const webAppUrl = Storage.getWebAppUrl();
         
-        if (webAppUrl) {
-            try {
-                const url = new URL(webAppUrl);
-                url.searchParams.set('sheetId', this.sheetId);
-                url.searchParams.set('sheetName', this.sheetName);
-                url.searchParams.set('row', rowIndex.toString());
-                url.searchParams.set('inventariado', 'SI');
-                url.searchParams.set('f_registro', dateStr);
-                url.searchParams.set('registrado_por', operator);
+        console.log('🔍 Web App URL:', webAppUrl);
+        console.log('📋 Parámetros de actualización:');
+        console.log('  - Fila:', rowIndex);
+        console.log('  - Operador:', operator);
+        console.log('  - Fecha:', dateStr);
+        
+        if (!webAppUrl) {
+            console.warn('⚠️ No hay Web App URL configurada. Actualizando solo localmente.');
+            this.updateLocalData(rowIndex, dateStr, operator);
+            return true;
+        }
+        
+        if (webAppUrl.includes('undefined') || webAppUrl.includes('null')) {
+            console.error('❌ Web App URL inválida:', webAppUrl);
+            this.updateLocalData(rowIndex, dateStr, operator);
+            return true;
+        }
+        
+        try {
+            const url = new URL(webAppUrl);
+            url.searchParams.set('sheetId', this.sheetId);
+            url.searchParams.set('sheetName', this.sheetName);
+            url.searchParams.set('row', rowIndex.toString());
+            url.searchParams.set('inventariado', 'SI');
+            url.searchParams.set('f_registro', dateStr);
+            url.searchParams.set('registrado_por', operator);
 
-                console.log('🔄 Enviando actualización a:', url.toString());
+            console.log('🔄 Enviando actualización a Web App...');
+            console.log('📍 URL:', url.toString().substring(0, 100) + '...');
 
-                const response = await fetch(url.toString(), {
+            const response = await Promise.race([
+                fetch(url.toString(), {
                     method: 'GET',
                     mode: 'cors',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     }
-                }).catch(corsError => {
-                    // Si hay error CORS, continuar localmente (es normal en GitHub Pages)
-                    console.warn('⚠️ Error CORS (normal en GitHub Pages). Actualizando localmente...');
-                    // Retornar respuesta ficticia para evitar romper el flujo
-                    return new Response(JSON.stringify({status: 'local'}), {
-                        status: 200,
-                        headers: {'Content-Type': 'application/json'}
-                    });
+                }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout')), 10000)
+                )
+            ]).catch(corsError => {
+                // Si hay error CORS o timeout, continuar localmente (es normal)
+                console.warn('⚠️ Error al actualizar en Web App:', corsError.message);
+                console.log('📦 Continuando con actualización local...');
+                // Retornar respuesta ficticia para evitar romper el flujo
+                return new Response(JSON.stringify({status: 'local'}), {
+                    status: 200,
+                    headers: {'Content-Type': 'application/json'}
                 });
+            });
 
-                console.log('📊 Respuesta del servidor:', response.status);
+            console.log('📊 Respuesta del servidor:', response.status);
+
+            if (response.ok || response.status === 200) {
+                try {
+                    const result = await response.json();
+                    console.log('✅ Resultado:', result);
+                } catch (e) {
+                    console.log('📝 Respuesta no es JSON, pero status es OK');
+                }
+                // Actualizar datos locales también
+                this.updateLocalData(rowIndex, dateStr, operator);
+                Storage.invalidateCache();
+                return true;
+            } else {
+                console.warn('⚠️ Respuesta del servidor con status:', response.status);
+                // Aunque falle, actualizar localmente
+                this.updateLocalData(rowIndex, dateStr, operator);
+                return true;
+            }
+        } catch (error) {
+            console.error('❌ Error enviando actualización:', error);
+            console.warn('ℹ️ Continuando con actualización local...');
+            // Continuar sin Web App
+            this.updateLocalData(rowIndex, dateStr, operator);
+            return true;
+        }
+    },
 
                 if (response.ok) {
                     const result = await response.json();

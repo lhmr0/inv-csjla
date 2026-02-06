@@ -472,12 +472,12 @@ const UI = {
                         <button class="modal-close" aria-label="Cerrar">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <p class="ocr-instruction">Selecciona el código que deseas buscar:</p>
+                        <p class="ocr-instruction">Selecciona o edita el código que deseas buscar:</p>
                         ${suggestedCode ? `
                             <div class="ocr-suggested-code">
-                                <strong>⭐ Código sugerido (12 dígitos):</strong>
-                                <div class="suggested-code-display">${suggestedCode}</div>
-                                <small>Haz clic en "Buscar Seleccionado" para usar este código</small>
+                                <strong>⭐ Código sugerido (12 dígitos) - Editable:</strong>
+                                <input type="text" id="suggestedCodeInput" class="suggested-code-input" maxlength="20" placeholder="Edita el código aquí">
+                                <small>Puedes editar el código si cometió errores en la lectura</small>
                             </div>
                         ` : ''}
                         <div class="ocr-text-container">
@@ -510,22 +510,16 @@ const UI = {
 
         // Actualizar texto OCR
         const textArea = document.getElementById('ocrTextArea');
+        const suggestedInput = document.getElementById('suggestedCodeInput');
         
-        // Si hay código sugerido, establecer como valor por defecto
-        if (suggestedCode) {
-            textArea.value = ocrText;
-            // Pre-seleccionar el código sugerido en el área de texto
-            setTimeout(() => {
-                const startPos = ocrText.indexOf(suggestedCode);
-                if (startPos !== -1) {
-                    textArea.setSelectionRange(startPos, startPos + suggestedCode.length);
-                }
-            }, 0);
-        } else {
-            textArea.value = ocrText;
-            textArea.focus();
-            textArea.select();
+        // Si hay código sugerido, establecer como valor editable
+        if (suggestedCode && suggestedInput) {
+            suggestedInput.value = suggestedCode;
+            suggestedInput.focus();
+            suggestedInput.select();
         }
+        
+        textArea.value = ocrText;
 
         // Elementos de control
         const closeBtn = modal.querySelector('.modal-close');
@@ -565,6 +559,17 @@ const UI = {
 
         // Confirmar búsqueda
         confirmBtn.onclick = () => {
+            // Primero, intentar usar el código sugerido editado si existe
+            const suggestedInput = document.getElementById('suggestedCodeInput');
+            if (suggestedInput && suggestedInput.value.trim()) {
+                const suggestedCode = suggestedInput.value.trim();
+                console.log('✅ Usando código sugerido editado:', suggestedCode);
+                modal.style.display = 'none';
+                onConfirm(suggestedCode);
+                return;
+            }
+            
+            // Sino, usar la selección del textarea
             const selected = textArea.value.substring(
                 textArea.selectionStart,
                 textArea.selectionEnd
@@ -575,9 +580,19 @@ const UI = {
                 modal.style.display = 'none';
                 onConfirm(searchText);
             } else {
-                this.showToast('⚠️ Selecciona o copia el texto que deseas buscar', 'warning');
+                this.showToast('⚠️ Selecciona o edita un código para buscar', 'warning');
             }
         };
+
+        // Permitir confirmar con Enter en el input de código sugerido
+        const suggestedInput = document.getElementById('suggestedCodeInput');
+        if (suggestedInput) {
+            suggestedInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    confirmBtn.click();
+                }
+            });
+        }
 
         // Cancelar
         const closeModal = () => {

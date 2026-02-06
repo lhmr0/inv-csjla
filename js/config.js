@@ -6,7 +6,7 @@ const CONFIG = {
     defaults: {
         sheetId: '1cIPjvg6Kfi79d6810JosSKCk4HSYcxqNYpTtdZ28bYQ',
         sheetUrl: 'https://docs.google.com/spreadsheets/d/1cIPjvg6Kfi79d6810JosSKCk4HSYcxqNYpTtdZ28bYQ/edit?usp=sharing',
-        webAppUrl: 'https://script.google.com/macros/s/AKfycbx21HdCVIrNn7W8yNvmyfpLf-iX-DJquPhSVMev83cGk921TWh09pGkwBX5C2uUzzxT/exec',
+        webAppUrl: 'https://script.google.com/macros/s/AKfycbxfJKr-PEzu7IWaTb45yHQihQsJnMabJazfIBAFEi6p9GpXABKEpbrM87ptm5JlxFjV/exec',
         sheetName: 'Inventario'
     },
     
