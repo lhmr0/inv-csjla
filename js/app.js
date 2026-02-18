@@ -707,35 +707,73 @@ const App = {
             return;
         }
         
+        console.log('\n========================================');
+        console.log('INICIANDO ENVÍO A GOOGLE DRIVE');
+        console.log('========================================');
+        console.log(`📸 Fotos a enviar: ${photos.length}`);
+        
         UI.showLoading('Enviando fotos a Google Drive...');
         
         try {
             // Autenticar con Google
-            console.log('🔓 Autenticando con Google Drive...');
+            console.log('\n1️⃣ AUTENTICANDO CON GOOGLE...');
+            console.log('   • Verificando conexión con Google API');
             await DriveIntegration.authenticate();
-            console.log('✅ Autenticado');
+            console.log('   ✅ Autenticación exitosa');
             
             // Crear/obtener carpeta
-            console.log('📁 Creando/obteniendo carpeta...');
+            console.log('\n2️⃣ PREPARANDO CARPETA EN DRIVE...');
+            console.log('   • Creando/obteniendo carpeta "Inventario_Fotos"');
             await DriveIntegration.getOrCreateFolder('Inventario_Fotos');
-            console.log('✅ Carpeta lista');
+            console.log('   ✅ Carpeta lista');
             
             // Subir fotos
-            console.log('📤 Subiendo fotos...');
+            console.log('\n3️⃣ SUBIENDO FOTOS...');
+            console.log(`   • Iniciando upload de ${photos.length} foto(s)`);
             const fileIds = await DriveIntegration.uploadPhotos(
                 photos,
                 `inventario_${Date.now()}`
             );
             
-            console.log('✅ Fotos subidas:', fileIds);
+            console.log('\n========================================');
+            console.log('✅ ENVÍO EXITOSO');
+            console.log('========================================');
+            console.log(`✅ Se subieron ${fileIds.length} foto(s) a Google Drive`);
+            console.log(`   • IDs: ${fileIds.join(', ')}`);
+            console.log(`   • Ver en: https://drive.google.com/drive/u/0/folders`);
+            
             UI.showToast(
                 `✅ ${fileIds.length} foto(s) enviada(s) a Google Drive`,
                 'success'
             );
             
+            // Limpiar fotos después de éxito
+            window.currentProductPhotos = [];
+            
         } catch (error) {
-            console.error('❌ Error enviando a Drive:', error);
-            UI.showToast('❌ Error: ' + error.message, 'error');
+            console.error('\n========================================');
+            console.error('❌ ERROR EN ENVÍO A DRIVE');
+            console.error('========================================');
+            console.error('Detalles del error:', error);
+            console.error('Mensaje:', error.message);
+            console.error('========================================\n');
+            
+            // Mostrar mensaje amigable al usuario
+            let userMessage = error.message;
+            
+            if (error.message.includes('redirect_uri_mismatch')) {
+                userMessage = 'Error de configuración OAuth. Contacta al administrador.';
+            } else if (error.message.includes('access_denied')) {
+                userMessage = 'Acceso denegado. Verifica permisos en Google.';
+            } else if (error.message.includes('tokenFailed')) {
+                userMessage = 'Error de sesión. Recarga la página e intenta de nuevo.';
+            } else if (error.message.includes('Permiso denegado')) {
+                userMessage = 'Sin permisos para acceder a Google Drive. Verifica OAuth.';
+            } else if (error.message.includes('Token expirado')) {
+                userMessage = 'Tu sesión de Google expiró. Autentica de nuevo.';
+            }
+            
+            UI.showToast('❌ Error: ' + userMessage, 'error');
         } finally {
             UI.hideLoading();
         }
