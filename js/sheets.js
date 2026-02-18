@@ -66,31 +66,39 @@ const SheetsAPI = {
                     if (response.ok) {
                         const csvText = await response.text();
                         
+                        // Si Apps Script devolvió datos válidos, usarlos
                         if (csvText && csvText.trim().length > 0) {
-                            this.data = this.parseCSV(csvText);
+                            const parsed = this.parseCSV(csvText);
                             
-                            if (this.data.length > 0) {
+                            if (parsed.length > 1) { // Al menos headers + 1 fila
+                                this.data = parsed;
                                 this.headers = this.data[0];
                                 console.log(`✅ Datos cargados vía Apps Script: ${this.data.length - 1} filas`);
+                                
+                                // Cachear los datos
+                                Storage.setCachedData({
+                                    data: this.data,
+                                    headers: this.headers,
+                                    sheetId: this.sheetId,
+                                    sheetName: this.sheetName
+                                });
+                                
+                                return this.data;
+                            } else {
+                                console.warn('⚠️ Apps Script devolvió datos vacíos, intentando acceso directo...');
                             }
-
-                            // Cachear los datos
-                            Storage.setCachedData({
-                                data: this.data,
-                                headers: this.headers,
-                                sheetId: this.sheetId,
-                                sheetName: this.sheetName
-                            });
-
-                            return this.data;
+                        } else {
+                            console.warn('⚠️ Apps Script devolvió CSV vacío, intentando acceso directo...');
                         }
+                    } else {
+                        console.warn('⚠️ Apps Script respondió con error HTTP, intentando acceso directo...');
                     }
                 } catch (appsScriptError) {
                     console.warn('⚠️ Apps Script no disponible, intentando acceso directo...', appsScriptError.message);
                 }
             }
             
-            // Fallback: Acceso directo a Google Sheets
+            // Fallback: Acceso directo a Google Sheets (siempre funciona si está compartido públicamente)
             const csvUrl = `https://docs.google.com/spreadsheets/d/${this.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.sheetName)}`;
             console.log('🌐 Intentando obtener datos de Google Sheets (directo)...');
             console.log('📍 URL:', csvUrl);
