@@ -697,6 +697,51 @@ const App = {
     },
 
     /**
+     * Envía fotos a Google Drive
+     */
+    async sendPhotosToGoogleDrive() {
+        const photos = window.currentProductPhotos || [];
+        
+        if (photos.length === 0) {
+            UI.showToast('No hay fotos para enviar', 'warning');
+            return;
+        }
+        
+        UI.showLoading('Enviando fotos a Google Drive...');
+        
+        try {
+            // Autenticar con Google
+            console.log('🔓 Autenticando con Google Drive...');
+            await DriveIntegration.authenticate();
+            console.log('✅ Autenticado');
+            
+            // Crear/obtener carpeta
+            console.log('📁 Creando/obteniendo carpeta...');
+            await DriveIntegration.getOrCreateFolder('Inventario_Fotos');
+            console.log('✅ Carpeta lista');
+            
+            // Subir fotos
+            console.log('📤 Subiendo fotos...');
+            const fileIds = await DriveIntegration.uploadPhotos(
+                photos,
+                `inventario_${Date.now()}`
+            );
+            
+            console.log('✅ Fotos subidas:', fileIds);
+            UI.showToast(
+                `✅ ${fileIds.length} foto(s) enviada(s) a Google Drive`,
+                'success'
+            );
+            
+        } catch (error) {
+            console.error('❌ Error enviando a Drive:', error);
+            UI.showToast('❌ Error: ' + error.message, 'error');
+        } finally {
+            UI.hideLoading();
+        }
+    },
+
+    /**
      * Actualiza la vista del historial
      */
     updateHistoryView() {

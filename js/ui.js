@@ -278,8 +278,9 @@ const UI = {
                     <h4 style="margin-top: 1.5rem;">�📝 ¿Desea Registrar este Bien en el Inventario?</h4>
                     <button id="btnMarkInventoried" class="btn btn-success btn-block">
                         ✅ ${isInventoried ? 'Actualizar Registro' : 'Sí, Registrar Bien'}
-                    </button>
-                    <button id="btnCancelRegistration" class="btn btn-secondary btn-block" style="margin-top: 0.5rem;">
+                    </button>                    <button id="btnSendPhotosToGoogleDrive" class="btn btn-info btn-block" style="margin-top: 0.5rem; display: ${(window.currentProductPhotos?.length || 0) > 0 ? 'block' : 'none'};">
+                        📤 Enviar Fotos a Google Drive
+                    </button>                    <button id="btnCancelRegistration" class="btn btn-secondary btn-block" style="margin-top: 0.5rem;">
                         ❌ No, Cancelar
                     </button>
                 </div>
@@ -376,11 +377,19 @@ const UI = {
         if (result) {
             const btnUpdate = document.getElementById('btnMarkInventoried');
             const btnCancel = document.getElementById('btnCancelRegistration');
+            const btnSendDrive = document.getElementById('btnSendPhotosToGoogleDrive');
             
             btnUpdate.addEventListener('click', () => {
                 onUpdate(result.rowIndex, '', window.currentProductPhotos || []);
                 this.closeModal();
             });
+            
+            // Botón para enviar fotos a Drive
+            if (btnSendDrive) {
+                btnSendDrive.addEventListener('click', () => {
+                    App.sendPhotosToGoogleDrive();
+                });
+            }
             
             btnCancel.addEventListener('click', () => {
                 this.closeModal();
