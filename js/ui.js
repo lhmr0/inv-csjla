@@ -51,6 +51,12 @@ const UI = {
             statToday: document.getElementById('statToday'),
             btnRefreshStats: document.getElementById('btnRefreshStats'),
             
+            // Inventoried
+            inventoriedList: document.getElementById('inventoriedList'),
+            btnRefreshInventoried: document.getElementById('btnRefreshInventoried'),
+            btnGenerateReport: document.getElementById('btnGenerateReport'),
+            btnExportInventorieds: document.getElementById('btnExportInventorieds'),
+            
             // Modal
             resultModal: document.getElementById('resultModal'),
             modalBody: document.getElementById('modalBody'),
@@ -257,7 +263,19 @@ const UI = {
                 </div>
                 
                 <div class="inventory-actions">
-                    <h4>📝 ¿Desea Registrar este Bien en el Inventario?</h4>
+                    <h4>� Capturar Fotos del Bien (Opcional - Máximo 2)</h4>
+                    <div id="productPhotos" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; min-height: 100px;">
+                        <div style="border: 2px dashed var(--border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: var(--background-secondary);" id="btnAddPhoto">
+                            <span style="text-align: center;">
+                                <div style="font-size: 2rem;">📷</div>
+                                <small style="color: var(--text-secondary);">Agregar foto</small>
+                            </span>
+                        </div>
+                    </div>
+                    <input type="file" id="photoInput" accept="image/*" style="display: none;">
+                    <small style="color: var(--text-secondary); display: block; margin-bottom: 1rem;">Nota: Las fotos se guardarán localmente con los datos del inventario</small>
+                    
+                    <h4 style="margin-top: 1.5rem;">�📝 ¿Desea Registrar este Bien en el Inventario?</h4>
                     <button id="btnMarkInventoried" class="btn btn-success btn-block">
                         ✅ ${isInventoried ? 'Actualizar Registro' : 'Sí, Registrar Bien'}
                     </button>
@@ -290,13 +308,77 @@ const UI = {
         this.elements.modalBody.innerHTML = html;
         this.elements.resultModal.classList.remove('hidden');
         
+        // Configurar eventos de fotos
+        if (result) {
+            const btnAddPhoto = document.getElementById('btnAddPhoto');
+            const photoInput = document.getElementById('photoInput');
+            const photosContainer = document.getElementById('productPhotos');
+            let photos = [];
+            
+            if (btnAddPhoto) {
+                btnAddPhoto.addEventListener('click', () => {
+                    photoInput.click();
+                });
+                
+                photoInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0 && photos.length < 2) {
+                        const file = e.target.files[0];
+                        const reader = new FileReader();
+                        
+                        reader.onload = (event) => {
+                            const photoData = {
+                                data: event.target.result,
+                                timestamp: new Date().toISOString(),
+                                code: code
+                            };
+                            photos.push(photoData);
+                            
+                            // Renderizar foto
+                            const photoEl = document.createElement('div');
+                            photoEl.style.position = 'relative';
+                            photoEl.innerHTML = `
+                                <img src="${event.target.result}" style="width: 100%; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-light);">
+                                <button class="btn btn-danger btn-small" style="position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; padding: 0; font-size: 0.8rem;">✕</button>
+                            `;
+                            
+                            photoEl.querySelector('button').addEventListener('click', () => {
+                                photos = photos.filter((_, i) => i !== Array.from(photosContainer.children).indexOf(photoEl));
+                                photoEl.remove();
+                                if (photos.length === 0) {
+                                    btnAddPhoto.style.display = 'flex';
+                                }
+                                if (photos.length < 2) {
+                                    btnAddPhoto.style.display = 'flex';
+                                }
+                            });
+                            
+                            photosContainer.insertBefore(photoEl, btnAddPhoto);
+                            
+                            if (photos.length >= 2) {
+                                btnAddPhoto.style.display = 'none';
+                            }
+                        };
+                        
+                        reader.readAsDataURL(file);
+                        photoInput.value = '';
+                    } else if (photos.length >= 2) {
+                        alert('Máximo 2 fotos permitidas');
+                        photoInput.value = '';
+                    }
+                });
+            }
+            
+            // Guardar fotos en objeto para uso posterior
+            window.currentProductPhotos = photos;
+        }
+        
         // Configurar evento de actualización
         if (result) {
             const btnUpdate = document.getElementById('btnMarkInventoried');
             const btnCancel = document.getElementById('btnCancelRegistration');
             
             btnUpdate.addEventListener('click', () => {
-                onUpdate(result.rowIndex, '');
+                onUpdate(result.rowIndex, '', window.currentProductPhotos || []);
                 this.closeModal();
             });
             
@@ -377,6 +459,49 @@ const UI = {
         this.elements.statInventoried.textContent = stats.inventoried;
         this.elements.statPending.textContent = stats.pending;
         this.elements.statToday.textContent = stats.today;
+    },
+
+    /**
+     * Actualiza la lista de bienes inventariados
+     * @param {Array} inventoried - Lista de bienes inventariados
+     */
+    updateInventoried(inventoried) {
+        if (inventoried.length === 0) {
+            this.elements.inventoriedList.innerHTML = '<p class="empty-message">No hay bienes inventariados</p>';
+            return;
+        }
+        
+        const cols = CONFIG.sheets.columns;
+        const html = inventoried.map((item, index) => {
+            return `
+                <div class="inventoried-item">
+                    <div class="inventoried-item-header">
+                        <span class="inventoried-item-code">${item[cols.cod_patrim] || '-'}</span>
+                        <span class="inventoried-item-date">${item[cols.f_registro] || 'Sin fecha'}</span>
+                    </div>
+                    <div class="inventoried-item-details">
+                        <div class="inventoried-item-detail-row">
+                            <span class="inventoried-detail-label">Descripción:</span>
+                            <span class="inventoried-detail-value">${item[cols.descripcion_denominacion] || '-'}</span>
+                        </div>
+                        <div class="inventoried-item-detail-row">
+                            <span class="inventoried-detail-label">Marca:</span>
+                            <span class="inventoried-detail-value">${item[cols.marca] || '-'}</span>
+                        </div>
+                        <div class="inventoried-item-detail-row">
+                            <span class="inventoried-detail-label">Modelo:</span>
+                            <span class="inventoried-detail-value">${item[cols.modelo] || '-'}</span>
+                        </div>
+                        <div class="inventoried-item-detail-row">
+                            <span class="inventoried-detail-label">Registrado por:</span>
+                            <span class="inventoried-detail-value">${item[cols.registrado_por] || '-'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        this.elements.inventoriedList.innerHTML = html;
     },
 
     /**
@@ -746,7 +871,7 @@ const UI = {
             modal.id = 'addNewProductModal';
             modal.className = 'modal-overlay';
             modal.innerHTML = `
-                <div class="modal-content">
+                <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
                     <div class="modal-header">
                         <h3>➕ Agregar Nuevo Producto</h3>
                         <button class="modal-close" aria-label="Cerrar">&times;</button>
@@ -772,6 +897,21 @@ const UI = {
                         <div class="form-group">
                             <label for="newProductModelo">Modelo:</label>
                             <input type="text" id="newProductModelo" class="form-control" placeholder="Ej: 55-UHD">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="newProductColor">Color:</label>
+                            <input type="text" id="newProductColor" class="form-control" placeholder="Ej: Negro, Gris, Blanco">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="newProductApellidos">Apellidos y Nombre:</label>
+                            <input type="text" id="newProductApellidos" class="form-control" placeholder="Ej: García López, Juan">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="newProductNombreOfi">Nombre de Oficina:</label>
+                            <input type="text" id="newProductNombreOfi" class="form-control" placeholder="Ej: Almacén Principal">
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -808,22 +948,25 @@ const UI = {
             
             const data = {
                 descripcion: desc,
-                marca: document.getElementById('newProductMarca').value.trim(),
-                modelo: document.getElementById('newProductModelo').value.trim()
+                marca: document.getElementById('newProductMarca').value.trim() || '',
+                modelo: document.getElementById('newProductModelo').value.trim() || '',
+                color: document.getElementById('newProductColor').value.trim() || '',
+                apellidos_nombres: document.getElementById('newProductApellidos').value.trim() || '',
+                nombre_ofi: document.getElementById('newProductNombreOfi').value.trim() || ''
             };
             
             modal.style.display = 'none';
             onConfirm('NEW', data);
         };
 
-        // Permitir confirmar con Enter
+        // Permitir Enter para confirmar
         descInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 confirmBtn.click();
             }
         });
 
-        // Cancelar
+        // Cerrar modal
         const closeModal = () => {
             modal.style.display = 'none';
             onConfirm(null);

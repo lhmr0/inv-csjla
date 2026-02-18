@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1F2937">
     <meta name="description" content="Sistema moderno de inventario con escáner de códigos de barras en tiempo real">
-    <link rel="icon" type="image/png" href="icons/icon-192.png">
+    <link rel="icon" type="image/svg+xml" href="icons/icon-192.svg">
 </head>
 <body>
     <div class="app-container">
@@ -46,6 +46,7 @@
                 <button class="tab" data-tab="manual">✏️ Manual</button>
                 <button class="tab" data-tab="history">📋 Historial</button>
                 <button class="tab" data-tab="stats">📊 Estadísticas</button>
+                <button class="tab" data-tab="inventoried">✅ Inventariados</button>
             </div>
 
             <!-- Tab: Scanner -->
@@ -136,6 +137,21 @@
                     <button id="btnRefreshStats" class="btn btn-primary">🔄 Actualizar Estadísticas</button>
                 </div>
             </div>
+
+            <!-- Tab: Inventoried Items -->
+            <div id="inventoriedTab" class="tab-content hidden">
+                <div class="card">
+                    <h3>Bienes Inventariados</h3>
+                    <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button id="btnRefreshInventoried" class="btn btn-secondary btn-small">🔄 Actualizar</button>
+                        <button id="btnGenerateReport" class="btn btn-success btn-small">📄 Generar Documento Word</button>
+                        <button id="btnExportInventorieds" class="btn btn-secondary btn-small">📊 Exportar CSV</button>
+                    </div>
+                    <div id="inventoriedList" class="inventoried-list">
+                        <p class="empty-message">No hay bienes inventariados</p>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- Modal de Resultado -->
@@ -160,9 +176,13 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
     <script src="js/config.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/sheets.js"></script>
+    <script src="js/drive-integration.js"></script>
     <script src="js/scanner-ocr.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/app.js"></script>

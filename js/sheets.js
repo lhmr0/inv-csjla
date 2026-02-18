@@ -311,18 +311,23 @@ const SheetsAPI = {
 
     /**
      * Agrega una nueva fila al sheet
-     * @param {Object} productData - Datos del producto: cod_patrim, descripcion, marca, modelo, operator
+     * @param {Object} productData - Datos del producto: cod_patrim, descripcion, marca, modelo, color, apellidos_nombres, nombre_ofi, operator
      * @returns {Promise<number>} Índice de la nueva fila
      */
     async addNewRow(productData) {
         const webAppUrl = Storage.getWebAppUrl();
         
         console.log('🆕 Agregando nuevo producto...');
-        console.log('📋 Datos:', productData);
+        console.log('📋 Datos del producto:', productData);
         
         if (!webAppUrl) {
             console.warn('⚠️ No hay Web App URL configurada. Actualizando solo localmente.');
             return false;
+        }
+        
+        if (webAppUrl.includes('undefined') || webAppUrl.includes('null')) {
+            console.error('❌ Web App URL inválida:', webAppUrl);
+            throw new Error('Web App URL no está configurada correctamente');
         }
         
         try {
@@ -330,15 +335,23 @@ const SheetsAPI = {
             url.searchParams.set('action', 'addNewRow');
             url.searchParams.set('sheetId', this.sheetId);
             url.searchParams.set('sheetName', this.sheetName);
-            url.searchParams.set('cod_patrim', productData.cod_patrim);
-            url.searchParams.set('descripcion', productData.descripcion);
-            url.searchParams.set('marca', productData.marca);
-            url.searchParams.set('modelo', productData.modelo);
-            url.searchParams.set('operator', productData.operator);
+            url.searchParams.set('cod_patrim', productData.cod_patrim || '');
+            url.searchParams.set('descripcion', productData.descripcion || '');
+            url.searchParams.set('marca', productData.marca || '');
+            url.searchParams.set('modelo', productData.modelo || '');
+            url.searchParams.set('color', productData.color || '');
+            url.searchParams.set('apellidos_nombres', productData.apellidos_nombres || '');
+            url.searchParams.set('nombre_ofi', productData.nombre_ofi || '');
+            url.searchParams.set('operator', productData.operator || '');
             
             console.log('🔄 Enviando nueva fila a Web App...');
             console.log('📍 URL COMPLETA:', url.toString());
             console.log('📌 Parámetro action:', url.searchParams.get('action'));
+            console.log('   cod_patrim:', url.searchParams.get('cod_patrim'));
+            console.log('   descripcion:', url.searchParams.get('descripcion'));
+            console.log('   color:', url.searchParams.get('color'));
+            console.log('   apellidos_nombres:', url.searchParams.get('apellidos_nombres'));
+            console.log('   nombre_ofi:', url.searchParams.get('nombre_ofi'));
             
             const response = await Promise.race([
                 fetch(url.toString(), {
@@ -346,19 +359,36 @@ const SheetsAPI = {
                     mode: 'cors'
                 }),
                 new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Timeout')), 10000)
+                    setTimeout(() => reject(new Error('Timeout después de 10s')), 10000)
                 )
             ]);
             
-            if (response.ok) {
+            console.log('📊 Respuesta HTTP:', response.status, response.statusText);
+            
+            if (response.ok || response.status === 200) {
                 const result = await response.json();
-                console.log('✅ Fila agregada correctamente:', result);
-                return result.data?.rowIndex || true;
+                console.log('✅ Respuesta JSON recibida:', result);
+                
+                if (result.success === true) {
+                    console.log('✨ Fila agregada correctamente');
+                    console.log('   Fila nueva:', result.data?.rowIndex);
+                    return result.data?.rowIndex || true;
+                } else if (result.success === false) {
+                    console.error('❌ Error de la Web App:', result.error);
+                    throw new Error(result.error || 'Error desconocido de la Web App');
+                } else {
+                    console.log('✅ Respuesta recibida (sin campo success):', result);
+                    return result.data?.rowIndex || true;
+                }
             } else {
-                throw new Error(`HTTP ${response.status}`);
+                console.error('❌ Error HTTP:', response.status);
+                const text = await response.text();
+                console.error('   Respuesta:', text);
+                throw new Error(`HTTP ${response.status}: ${text}`);
             }
         } catch (error) {
-            console.error('❌ Error agregando nueva fila:', error);
+            console.error('❌ Error agregando nueva fila:', error.message);
+            console.error('   Stack:', error.stack);
             throw error;
         }
     },
@@ -394,19 +424,25 @@ const SheetsAPI = {
         let total = 0;
         let inventoried = 0;
         let today = 0;
-        const todayStr = new Date().toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
+        
+        // Obtener fecha actual en formato DD/MM/YYYY
+        const now = new Date();
+        const todayStr = String(now.getDate()).padStart(2, '0') + '/' + 
+                         String(now.getMonth() + 1).padStart(2, '0') + '/' + 
+                         now.getFullYear();
 
         for (let i = 1; i < this.data.length; i++) {
             const row = this.data[i];
-            if (row[cols.codigo]) {
+            // Verificar si la fila tiene datos (usando cod_patrim como referencia)
+            if (row && row[cols.cod_patrim] && row[cols.cod_patrim].trim()) {
                 total++;
+                
+                // Contar inventariados
                 if (row[cols.inventariado] && row[cols.inventariado].toUpperCase() === 'SI') {
                     inventoried++;
-                    if (row[cols.fechaInventario] && row[cols.fechaInventario].includes(todayStr.split(' ')[0])) {
+                    
+                    // Contar inventariados hoy
+                    if (row[cols.f_registro] && row[cols.f_registro].includes(todayStr)) {
                         today++;
                     }
                 }
@@ -419,6 +455,32 @@ const SheetsAPI = {
             pending: total - inventoried,
             today
         };
+    },
+
+    /**
+     * Obtiene lista de bienes inventariados
+     * @returns {Array} Lista de bienes inventariados
+     */
+    getInventoried() {
+        const cols = CONFIG.sheets.columns;
+        const inventoried = [];
+        
+        for (let i = 1; i < this.data.length; i++) {
+            const row = this.data[i];
+            // Verificar si está inventariado
+            if (row && row[cols.inventariado] && row[cols.inventariado].toUpperCase() === 'SI') {
+                inventoried.push(row);
+            }
+        }
+        
+        // Ordenar por fecha de registro decendente
+        inventoried.sort((a, b) => {
+            const dateA = new Date(a[cols.f_registro] || '');
+            const dateB = new Date(b[cols.f_registro] || '');
+            return dateB - dateA;
+        });
+        
+        return inventoried;
     },
 
     /**

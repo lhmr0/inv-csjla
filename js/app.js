@@ -103,6 +103,17 @@ const App = {
         // Stats
         UI.elements.btnRefreshStats.addEventListener('click', () => this.refreshStats());
         
+        // Inventoried
+        if (UI.elements.btnRefreshInventoried) {
+            UI.elements.btnRefreshInventoried.addEventListener('click', () => this.updateInventoriedView());
+        }
+        if (UI.elements.btnGenerateReport) {
+            UI.elements.btnGenerateReport.addEventListener('click', () => this.generateWordReport());
+        }
+        if (UI.elements.btnExportInventorieds) {
+            UI.elements.btnExportInventorieds.addEventListener('click', () => this.exportInventoried());
+        }
+        
         // Modal
         UI.elements.closeModal.addEventListener('click', () => UI.closeModal());
         UI.elements.resultModal.addEventListener('click', (e) => {
@@ -190,6 +201,9 @@ const App = {
             
             // Actualizar estadísticas
             this.refreshStats();
+            
+            // Cargar bienes inventariados
+            this.updateInventoriedView();
             
         } catch (error) {
             console.error('Error en login:', error);
@@ -569,18 +583,18 @@ const App = {
             // Si no encontró, mostrar opción de agregar nuevo
             if (!result) {
                 UI.showToast('⚠️ Producto no encontrado. ¿Deseas agregarlo?', 'warning');
-                UI.showProductModal(result, code, (rowIndex, observations) => {
+                UI.showProductModal(result, code, async (rowIndex, observations) => {
                     if (rowIndex === 'NEW') {
                         // Agregar nuevo producto
-                        this.addNewProduct(code, observations);
+                        await this.addNewProduct(code, observations);
                     } else {
-                        this.updateInventory(rowIndex, observations);
+                        await this.updateInventory(rowIndex, observations);
                     }
                 });
             } else {
                 // Mostrar modal con resultado
-                UI.showProductModal(result, code, (rowIndex, observations) => {
-                    this.updateInventory(rowIndex, observations);
+                UI.showProductModal(result, code, async (rowIndex, observations) => {
+                    await this.updateInventory(rowIndex, observations);
                 });
                 UI.showToast(CONFIG.messages.productFound, 'success');
             }
@@ -607,6 +621,9 @@ const App = {
                 descripcion: data.descripcion || 'Nuevo producto',
                 marca: data.marca || '',
                 modelo: data.modelo || '',
+                color: data.color || '',
+                apellidos_nombres: data.apellidos_nombres || '',
+                nombre_ofi: data.nombre_ofi || '',
                 operator: this.operator
             });
             
@@ -633,17 +650,31 @@ const App = {
      * Actualiza el estado de inventario de un producto
      * @param {number} rowIndex - Índice de la fila
      * @param {string} observations - Observaciones
+     * @param {Array} photos - Fotos capturadas (opcional)
      */
-    async updateInventory(rowIndex, observations) {
+    async updateInventory(rowIndex, observations, photos = []) {
         UI.showLoading('Actualizando inventario...');
         
         try {
             await SheetsAPI.updateInventoryStatus(rowIndex, this.operator, observations);
             
+            // Guardar fotos si existen
+            if (photos && photos.length > 0) {
+                const photoData = {
+                    rowIndex: rowIndex,
+                    photos: photos,
+                    timestamp: new Date().toISOString(),
+                    operator: this.operator
+                };
+                Storage.savePhotos(photoData);
+                console.log('📷 Fotos guardadas para el bien:', rowIndex);
+            }
+            
             // Actualizar último registro del historial
             const history = Storage.getHistory();
             if (history.length > 0) {
                 history[0].updated = true;
+                history[0].hasPhotos = photos && photos.length > 0;
                 Storage.set(CONFIG.storage.keys.history, history);
                 this.updateHistoryView();
             }
@@ -651,7 +682,7 @@ const App = {
             // Invalidar caché para forzar actualización
             Storage.invalidateCache();
             
-            UI.showToast(CONFIG.messages.updateSuccess, 'success');
+            UI.showToast(CONFIG.messages.updateSuccess + (photos && photos.length > 0 ? ` (${photos.length} foto${photos.length > 1 ? 's' : ''} guardada${photos.length > 1 ? 's' : ''})` : ''), 'success');
             UI.closeModal();
             
             // Actualizar estadísticas
@@ -712,6 +743,237 @@ const App = {
             UI.updateStats(stats);
         } finally {
             UI.hideLoading();
+        }
+    },
+
+    /**
+     * Actualiza la vista de bienes inventariados
+     */
+    updateInventoriedView() {
+        const inventoried = SheetsAPI.getInventoried();
+        UI.updateInventoried(inventoried);
+        UI.showToast(`${inventoried.length} bienes inventariados`, 'info');
+    },
+
+    /**
+     * Genera documento Word con los bienes inventariados
+     */
+    async generateWordReport() {
+        const inventoried = SheetsAPI.getInventoried();
+        
+        if (inventoried.length === 0) {
+            UI.showToast('No hay bienes inventariados para generar reporte', 'warning');
+            return;
+        }
+        
+        UI.showLoading('Generando documento Word...');
+        
+        try {
+            const cols = CONFIG.sheets.columns;
+            const sections = [];
+            
+            // Agregar una sección por cada bien inventariado
+            inventoried.forEach((item, index) => {
+                const pageBreak = index > 0 ? [new docx.Paragraph({ text: '', pageBreakBefore: true })] : [];
+                
+                sections.push(...pageBreak);
+                sections.push(new docx.Paragraph({
+                    text: 'EVALUACIÓN TÉCNICA DE BIEN PATRIMONIAL',
+                    alignment: docx.AlignmentType.CENTER,
+                    spacing: { after: 400 },
+                    bold: true,
+                    size: 28
+                }));
+                
+                sections.push(new docx.Paragraph({
+                    text: '',
+                    spacing: { after: 200 }
+                }));
+                
+                // Sección de Equipo
+                sections.push(new docx.Paragraph({
+                    text: '1. EQUIPO:',
+                    bold: true,
+                    spacing: { before: 200, after: 200 }
+                }));
+                
+                const equipoInfo = [
+                    ['Tipo:', item[cols.descripcion_denominacion] || '-'],
+                    ['Marca:', item[cols.marca] || '-'],
+                    ['Modelo:', item[cols.modelo] || '-'],
+                    ['Código Patrimonial:', item[cols.cod_patrim] || '-'],
+                    ['Serie:', item[cols.color] || '-']
+                ];
+                
+                equipoInfo.forEach(([label, value]) => {
+                    sections.push(new docx.Table({
+                        rows: [
+                            new docx.TableRow({
+                                cells: [
+                                    new docx.TableCell({
+                                        children: [new docx.Paragraph({ text: label, bold: true })],
+                                        width: { size: 30, type: docx.WidthType.PERCENTAGE }
+                                    }),
+                                    new docx.TableCell({
+                                        children: [new docx.Paragraph({ text: String(value) })],
+                                        width: { size: 70, type: docx.WidthType.PERCENTAGE }
+                                    })
+                                ]
+                            })
+                        ],
+                        width: { size: 100, type: docx.WidthType.PERCENTAGE }
+                    }));
+                });
+                
+                sections.push(new docx.Paragraph({
+                    text: '',
+                    spacing: { after: 200 }
+                }));
+                
+                // Sección de Evaluación Técnica
+                sections.push(new docx.Paragraph({
+                    text: '2. EVALUACIÓN TÉCNICA:',
+                    bold: true,
+                    spacing: { before: 200, after: 200 }
+                }));
+                
+                sections.push(new docx.Paragraph({
+                    text: 'Durante el inventario se realizó la inspección visual del equipo, determinándose que presenta fallas propias de su antigüedad y desgaste por uso continuo. Asimismo, se constató que el bien ha cumplido su vida útil (más de 5 años de antigüedad), evidenciando deterioro irreversible.',
+                    spacing: { after: 200 },
+                    alignment: docx.AlignmentType.JUSTIFIED
+                }));
+                
+                // Sección de Conclusión Técnica
+                sections.push(new docx.Paragraph({
+                    text: '3. CONCLUSIÓN TÉCNICA:',
+                    bold: true,
+                    spacing: { before: 200, after: 200 }
+                }));
+                
+                sections.push(new docx.Paragraph({
+                    text: 'Equipo físicamente deteriorado, inoperativo y no apto para su utilización.',
+                    spacing: { after: 200 },
+                    alignment: docx.AlignmentType.JUSTIFIED
+                }));
+                
+                // Sección de Recomendación Técnica
+                sections.push(new docx.Paragraph({
+                    text: '4. RECOMENDACIÓN TÉCNICA:',
+                    bold: true,
+                    spacing: { before: 200, after: 200 }
+                }));
+                
+                sections.push(new docx.Paragraph({
+                    text: 'Proceder con la baja patrimonial del equipo evaluado, debido a que la reparación no resulta técnica ni económicamente viable, recomendándose su disposición final conforme a la normativa institucional vigente.',
+                    spacing: { after: 200 },
+                    alignment: docx.AlignmentType.JUSTIFIED
+                }));
+                
+                sections.push(new docx.Paragraph({
+                    text: '',
+                    spacing: { after: 200 }
+                }));
+                
+                // Pie de página con datos de registro
+                sections.push(new docx.Paragraph({
+                    text: `Registrado por: ${item[cols.registrado_por] || '-'} | Fecha: ${item[cols.f_registro] || '-'}`,
+                    spacing: { before: 400 },
+                    size: 18,
+                    color: '666666',
+                    alignment: docx.AlignmentType.CENTER
+                }));
+            });
+            
+            // Crear documento
+            const doc = new docx.Document({
+                sections: [{
+                    children: sections
+                }]
+            });
+            
+            // Descargar documento
+            docx.Packer.toBlob(doc).then(blob => {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `Evaluacion_Tecnica_${new Date().toISOString().split('T')[0]}.docx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                UI.hideLoading();
+                UI.showToast(`✅ Documento generado: ${inventoried.length} equipos`, 'success');
+            });
+            
+        } catch (error) {
+            console.error('Error generating report:', error);
+            UI.hideLoading();
+            UI.showToast('❌ Error al generar documento: ' + error.message, 'error');
+        }
+    },
+
+    /**
+     * Exporta bienes inventariados a CSV
+     */
+    exportInventoried() {
+        const inventoried = SheetsAPI.getInventoried();
+        
+        if (inventoried.length === 0) {
+            UI.showToast('No hay bienes inventariados para exportar', 'warning');
+            return;
+        }
+        
+        try {
+            const cols = CONFIG.sheets.columns;
+            
+            // Headers del CSV
+            const headers = [
+                'Código Patrimonial',
+                'Descripción',
+                'Marca',
+                'Modelo',
+                'Estado de Conservación',
+                'Fecha de Inventario',
+                'Registrado por',
+                'Local',
+                'Oficina'
+            ];
+            
+            // Datos del CSV
+            const rows = inventoried.map(item => [
+                item[cols.cod_patrim] || '-',
+                item[cols.descripcion_denominacion] || '-',
+                item[cols.marca] || '-',
+                item[cols.modelo] || '-',
+                item[cols.estado_conserv] || '-',
+                item[cols.f_registro] || '-',
+                item[cols.registrado_por] || '-',
+                item[cols.nombre_local] || '-',
+                item[cols.nombre_ofi] || '-'
+            ]);
+            
+            // Convertir a CSV
+            let csvContent = headers.join(',') + '\n';
+            rows.forEach(row => {
+                const sanitizedRow = row.map(cell => {
+                    // Envolver en comillas si contiene comas o comillas
+                    return '"' + String(cell).replace(/"/g, '""') + '"';
+                });
+                csvContent += sanitizedRow.join(',') + '\n';
+            });
+            
+            // Descargar CSV
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Inventoriados_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            UI.showToast(`✅ ${inventoried.length} registros exportados a CSV`, 'success');
+            
+        } catch (error) {
+            console.error('Error exporting CSV:', error);
+            UI.showToast('❌ Error al exportar: ' + error.message, 'error');
         }
     },
 

@@ -43,7 +43,7 @@ function doGet(e) {
     }
     
     const params = e.parameter;
-    const action = params.action;
+    const action = params.action || '';
     
     Logger.log('═══════════════════════════════════════════════════════');
     Logger.log('🟢 NUEVA SOLICITUD - ' + new Date().toISOString());
@@ -51,16 +51,16 @@ function doGet(e) {
     Logger.log('📋 PARÁMETROS:', JSON.stringify(params));
     Logger.log('═══════════════════════════════════════════════════════');
     
-    // Determinar qué acción ejecutar
-    if (action && action === 'addNewRow') {
+    // Determinar qué acción ejecutar (ESTRICTO)
+    if (action === 'addNewRow') {
       Logger.log('✅ Detectada acción: addNewRow');
       return handleAddNewRow(params);
-    } else if (action && action === 'updateInventory') {
-      Logger.log('✅ Detectada acción: updateInventory');
+    } else if (action === 'updateInventory' || action === '') {
+      Logger.log('✅ Detectada acción: updateInventory (o por defecto)');
       return handleUpdateInventory(params);
     } else {
-      Logger.log('ℹ️  Acción por defecto: updateInventory');
-      return handleUpdateInventory(params);
+      Logger.log('❌ Acción desconocida: ' + action);
+      return createErrorResponse('Acción desconocida: ' + action);
     }
   } catch (error) {
     Logger.log('❌ ERROR GENERAL EN doGet:');
@@ -219,12 +219,23 @@ function handleAddNewRow(params) {
     Logger.log('🆕 AGREGAR NUEVA FILA - ' + new Date().toISOString());
     Logger.log('📝 Parámetros recibidos:', JSON.stringify(params));
     
+    // Validar que sea la acción correcta
+    const action = params.action || '';
+    if (action !== 'addNewRow') {
+      Logger.log('❌ ERROR: Esta función debe ser llamada con action=addNewRow');
+      Logger.log('   Acción recibida: ' + action);
+      return createErrorResponse('ERROR: Esta función requiere action=addNewRow');
+    }
+    
     const sheetId = params.sheetId;
     const sheetName = params.sheetName || 'Inventario';
     const cod_patrim = params.cod_patrim;
     const descripcion = params.descripcion;
     const marca = params.marca || '';
     const modelo = params.modelo || '';
+    const color = params.color || '';
+    const apellidos_nombres = params.apellidos_nombres || '';
+    const nombre_ofi = params.nombre_ofi || '';
     const operator = params.operator || '';
     
     Logger.log('✏️  DATOS:');
@@ -232,6 +243,11 @@ function handleAddNewRow(params) {
     Logger.log('   sheetName: ' + sheetName);
     Logger.log('   cod_patrim: ' + cod_patrim);
     Logger.log('   descripcion: ' + descripcion);
+    Logger.log('   marca: ' + marca);
+    Logger.log('   modelo: ' + modelo);
+    Logger.log('   color: ' + color);
+    Logger.log('   apellidos_nombres: ' + apellidos_nombres);
+    Logger.log('   nombre_ofi: ' + nombre_ofi);
     Logger.log('   operator: ' + operator);
     
     // Validar parámetros
@@ -278,27 +294,42 @@ function handleAddNewRow(params) {
       Logger.log('📍 Nueva fila: ' + newRowIndex);
       
       // Completar datos (basado en la estructura de 21 columnas)
+      // F(6) = Apellidos_Nombres, G(7) = Nombre_Ofi
       // J(10) = Código Patrimonio, K(11) = Descripción, L(12) = Marca, M(13) = Modelo
+      // N(14) = Color
       // S(19) = INVENTARIADO, T(20) = F_REGISTRO, U(21) = REGISTRADO_POR
       
-      sheet.getRange(newRowIndex, 10).setValue(cod_patrim);      // J - Código Patrimonio
-      sheet.getRange(newRowIndex, 11).setValue(descripcion);     // K - Descripción
-      sheet.getRange(newRowIndex, 12).setValue(marca);           // L - Marca
-      sheet.getRange(newRowIndex, 13).setValue(modelo);          // M - Modelo
-      sheet.getRange(newRowIndex, 19).setValue('SI');            // S - INVENTARIADO
+      sheet.getRange(newRowIndex, 6).setValue(apellidos_nombres);         // F - Apellidos_Nombres
+      sheet.getRange(newRowIndex, 7).setValue(nombre_ofi);               // G - Nombre_Ofi
+      sheet.getRange(newRowIndex, 10).setValue(cod_patrim);              // J - Código Patrimonio
+      sheet.getRange(newRowIndex, 11).setValue(descripcion);             // K - Descripción
+      sheet.getRange(newRowIndex, 12).setValue(marca);                   // L - Marca
+      sheet.getRange(newRowIndex, 13).setValue(modelo);                  // M - Modelo
+      sheet.getRange(newRowIndex, 14).setValue(color);                   // N - Color
+      sheet.getRange(newRowIndex, 19).setValue('SI');                    // S - INVENTARIADO
       sheet.getRange(newRowIndex, 20).setValue(new Date().toLocaleString('es-ES')); // T - F_REGISTRO
-      sheet.getRange(newRowIndex, 21).setValue(operator);        // U - REGISTRADO_POR
+      sheet.getRange(newRowIndex, 21).setValue(operator);                // U - REGISTRADO_POR
       
       Logger.log('✅ Fila agregada correctamente');
       Logger.log('   Fila: ' + newRowIndex);
       Logger.log('   Código: ' + cod_patrim);
       Logger.log('   Descripción: ' + descripcion);
+      Logger.log('   Marca: ' + marca);
+      Logger.log('   Modelo: ' + modelo);
+      Logger.log('   Color: ' + color);
+      Logger.log('   Apellidos_Nombres: ' + apellidos_nombres);
+      Logger.log('   Nombre_Ofi: ' + nombre_ofi);
       
       const successData = {
         message: 'Nuevo bien agregado correctamente',
         rowIndex: newRowIndex,
         cod_patrim: cod_patrim,
         descripcion: descripcion,
+        marca: marca,
+        modelo: modelo,
+        color: color,
+        apellidos_nombres: apellidos_nombres,
+        nombre_ofi: nombre_ofi,
         timestamp: new Date().toISOString(),
         status: 'success'
       };

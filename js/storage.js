@@ -326,5 +326,88 @@ const Storage = {
      */
     hasSession() {
         return !!(this.getOperator() && this.getSheetUrl());
-    }
-};
+    },
+
+    /**
+     * Guarda fotos de un bien inventariado
+     * @param {Object} photoData - Datos de las fotos
+     */
+    savePhotos(photoData) {
+        try {
+            const key = `photos_${photoData.rowIndex}_${Date.now()}`;
+            return this.set(key, photoData);
+        } catch (error) {
+            console.error('Error guardando fotos:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Obtiene fotos de un bien específico
+     * @param {number} rowIndex - Índice de la fila
+     * @returns {Array} Array de fotos
+     */
+    getPhotos(rowIndex) {
+        try {
+            const photos = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(`photos_${rowIndex}_`)) {
+                    const data = this.get(key, {});
+                    if (data.photos) {
+                        photos.push(...data.photos);
+                    }
+                }
+            }
+            return photos;
+        } catch (error) {
+            console.error('Error obteniendo fotos:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Obtiene todas las fotos guardadas
+     * @returns {Object} Objeto con fotos agrupadas por rowIndex
+     */
+    getAllPhotos() {
+        try {
+            const allPhotos = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('photos_')) {
+                    const data = this.get(key, {});
+                    if (!allPhotos[data.rowIndex]) {
+                        allPhotos[data.rowIndex] = [];
+                    }
+                    if (data.photos) {
+                        allPhotos[data.rowIndex].push(...data.photos);
+                    }
+                }
+            }
+            return allPhotos;
+        } catch (error) {
+            console.error('Error obteniendo todas las fotos:', error);
+            return {};
+        }
+    },
+
+    /**
+     * Elimina fotos de un bien específico
+     * @param {number} rowIndex - Índice de la fila
+     */
+    deletePhotos(rowIndex) {
+        try {
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(`photos_${rowIndex}_`)) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(key => this.remove(key));
+            return true;
+        } catch (error) {
+            console.error('Error eliminando fotos:', error);
+            return false;
+        }

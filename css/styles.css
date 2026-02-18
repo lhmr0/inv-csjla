@@ -1510,5 +1510,104 @@ input[type="file"] {
     }
 }
 
+/* Estilos para lista de inventariados */
+.inventoried-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.inventoried-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.inventoried-list::-webkit-scrollbar-track {
+    background: var(--background-secondary);
+    border-radius: 10px;
+}
+
+.inventoried-list::-webkit-scrollbar-thumb {
+    background: var(--accent-cyan);
+    border-radius: 10px;
+}
+
+.inventoried-list::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-purple);
+}
+
+.inventoried-item {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 1rem;
+    transition: all 0.2s ease;
+}
+
+.inventoried-item:hover {
+    border-color: var(--accent-emerald);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+    transform: translateY(-1px);
+}
+
+.inventoried-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.inventoried-item-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--accent-cyan);
+    font-size: 0.95rem;
+}
+
+.inventoried-item-date {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.inventoried-item-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.inventoried-item-detail-row {
+    display: flex;
+    flex-direction: column;
+}
+
+.inventoried-detail-label {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-bottom: 0.2rem;
+}
+
+.inventoried-detail-value {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.empty-message {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 2rem 1rem;
+    font-style: italic;
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+
     }
 }
