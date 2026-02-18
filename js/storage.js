@@ -411,3 +411,5 @@ const Storage = {
             console.error('Error eliminando fotos:', error);
             return false;
         }
+    }
+};

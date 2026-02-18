@@ -759,6 +759,12 @@ const App = {
      * Genera documento Word con los bienes inventariados
      */
     async generateWordReport() {
+        // Verificar que docx esté disponible
+        if (!window.docx) {
+            UI.showToast('⚠️ Error: Librería docx no disponible. Recarga la página.', 'error');
+            return;
+        }
+        
         const inventoried = SheetsAPI.getInventoried();
         
         if (inventoried.length === 0) {
@@ -960,8 +966,12 @@ const App = {
                 csvContent += sanitizedRow.join(',') + '\n';
             });
             
+            // Agregar BOM para UTF-8 (Excel lo reconoce correctamente)
+            const BOM = '\uFEFF';
+            const csvWithBOM = BOM + csvContent;
+            
             // Descargar CSV
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = `Inventoriados_${new Date().toISOString().split('T')[0]}.csv`;
