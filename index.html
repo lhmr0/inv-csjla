@@ -176,10 +176,26 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
-    <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
-    <script>if(!window.docx && typeof docx !== 'undefined') window.docx = docx;</script>
+    <!-- Load docx with proper UMD -->
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     <script src="https://apis.google.com/js/api.js"></script>
+    <!-- Ensure docx is available globally -->
+    <script>
+        window.docxReady = new Promise((resolve) => {
+            if (window.docx) {
+                resolve(window.docx);
+            } else {
+                const checkDocx = setInterval(() => {
+                    if (window.docx) {
+                        clearInterval(checkDocx);
+                        resolve(window.docx);
+                    }
+                }, 100);
+                setTimeout(() => clearInterval(checkDocx), 5000);
+            }
+        });
+    </script>
     <script src="js/config.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/sheets.js"></script>

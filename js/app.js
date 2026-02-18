@@ -759,9 +759,15 @@ const App = {
      * Genera documento Word con los bienes inventariados
      */
     async generateWordReport() {
-        // Verificar que docx esté disponible
+        // Esperar a que docx esté disponible
         if (!window.docx) {
-            UI.showToast('⚠️ Error: Librería docx no disponible. Recarga la página.', 'error');
+            await window.docxReady;
+        }
+        const docx = window.docx;
+        
+        if (!docx) {
+            UI.showToast('⚠️ Error: Librería docx no cargó correctamente. Recarga la página.', 'error');
+            console.error('docx not available:', { windowDocx: window.docx, docxReady: window.docxReady });
             return;
         }
         
