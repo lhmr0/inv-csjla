@@ -278,7 +278,7 @@ const UI = {
                     <h4 style="margin-top: 1.5rem;">�📝 ¿Desea Registrar este Bien en el Inventario?</h4>
                     <button id="btnMarkInventoried" class="btn btn-success btn-block">
                         ✅ ${isInventoried ? 'Actualizar Registro' : 'Sí, Registrar Bien'}
-                    </button>                    <button id="btnSendPhotosToGoogleDrive" class="btn btn-info btn-block" style="margin-top: 0.5rem; display: ${(window.currentProductPhotos?.length || 0) > 0 ? 'block' : 'none'};">
+                    </button>                    <button id="btnSendPhotosToGoogleDrive" class="btn btn-info btn-block" style="margin-top: 0.5rem;">
                         📤 Enviar Fotos a Google Drive
                     </button>                    <button id="btnCancelRegistration" class="btn btn-secondary btn-block" style="margin-top: 0.5rem;">
                         ❌ No, Cancelar
@@ -334,6 +334,11 @@ const UI = {
                             };
                             photos.push(photoData);
                             
+                            // Actualizar referencia global y visibilidad del botón
+                            window.currentProductPhotos = photos;
+                            UI.updateDriveButtonVisibility();
+                            console.log(`📸 Foto capturada (${window.currentProductPhotos.length}/2)`);
+                            
                             // Renderizar foto
                             const photoEl = document.createElement('div');
                             photoEl.style.position = 'relative';
@@ -345,6 +350,12 @@ const UI = {
                             photoEl.querySelector('button').addEventListener('click', () => {
                                 photos = photos.filter((_, i) => i !== Array.from(photosContainer.children).indexOf(photoEl));
                                 photoEl.remove();
+                                
+                                // Actualizar referencia global al eliminar foto
+                                window.currentProductPhotos = photos;
+                                UI.updateDriveButtonVisibility();
+                                console.log(`🗑️ Foto eliminada (${window.currentProductPhotos.length}/2)`);
+                                
                                 if (photos.length === 0) {
                                     btnAddPhoto.style.display = 'flex';
                                 }
@@ -371,6 +382,9 @@ const UI = {
             
             // Guardar fotos en objeto para uso posterior
             window.currentProductPhotos = photos;
+            
+            // Actualizar visibilidad del botón de Drive
+            this.updateDriveButtonVisibility();
         }
         
         // Configurar evento de actualización
@@ -389,6 +403,8 @@ const UI = {
                 btnSendDrive.addEventListener('click', () => {
                     App.sendPhotosToGoogleDrive();
                 });
+                // Actualizar visibilidad inicial
+                this.updateDriveButtonVisibility();
             }
             
             btnCancel.addEventListener('click', () => {
@@ -420,6 +436,24 @@ const UI = {
      */
     closeModal() {
         this.elements.resultModal.classList.add('hidden');
+    },
+
+    /**
+     * Actualiza la visibilidad del botón de Google Drive
+     * Se muestra solo si hay fotos capturadas
+     */
+    updateDriveButtonVisibility() {
+        const btnSendDrive = document.getElementById('btnSendPhotosToGoogleDrive');
+        if (btnSendDrive) {
+            const hasPhotos = (window.currentProductPhotos?.length || 0) > 0;
+            if (hasPhotos) {
+                btnSendDrive.style.display = 'block';
+                console.log(`📤 Botón Drive ahora visible (${window.currentProductPhotos.length} fotos capturadas)`);
+            } else {
+                btnSendDrive.style.display = 'none';
+                console.log('📤 Botón Drive oculto (sin fotos capturadas)');
+            }
+        }
     },
 
     /**
