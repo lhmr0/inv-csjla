@@ -821,7 +821,7 @@ const App = {
                     sections.push(new docx.Table({
                         rows: [
                             new docx.TableRow({
-                                cells: [
+                                children: [
                                     new docx.TableCell({
                                         children: [new docx.Paragraph({ text: label, bold: true })],
                                         width: { size: 30, type: docx.WidthType.PERCENTAGE }
