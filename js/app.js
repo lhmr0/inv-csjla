@@ -162,7 +162,7 @@ const App = {
         
         try {
             console.log('🔄 Intentando conectar con Google Sheets...');
-            await SheetsAPI.init(data.sheetUrl, data.sheetName);
+            await SheetsAPI.init(data.sheetUrl, data.sheetName, data.webAppUrl);
             console.log('✅ Conexión exitosa con Google Sheets');
             
         } catch (error) {

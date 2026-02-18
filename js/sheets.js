@@ -6,6 +6,7 @@
 const SheetsAPI = {
     sheetId: null,
     sheetName: null,
+    webAppUrl: null,
     data: [],
     headers: [],
 
@@ -23,15 +24,20 @@ const SheetsAPI = {
      * Inicializa la conexión con el sheet
      * @param {string} url - URL del Google Sheet
      * @param {string} sheetName - Nombre de la hoja
+     * @param {string} webAppUrl - URL de la Apps Script para lectura remota
      * @returns {Promise<boolean>} true si la conexión fue exitosa
      */
-    async init(url, sheetName) {
+    async init(url, sheetName, webAppUrl) {
         this.sheetId = this.extractSheetId(url);
         this.sheetName = sheetName || 'Hoja1';
+        this.webAppUrl = webAppUrl || CONFIG.defaults.webAppUrl;
 
         if (!this.sheetId) {
             throw new Error(CONFIG.messages.invalidUrl);
         }
+
+        // Guardar webAppUrl en Storage para usar en actualizaciones
+        Storage.setWebAppUrl(this.webAppUrl);
 
         // Intentar cargar los datos
         await this.fetchData();
@@ -40,13 +46,53 @@ const SheetsAPI = {
 
     /**
      * Obtiene los datos del sheet como CSV
+     * Intenta primero con Apps Script (CORS compatible en producción)
      * @returns {Promise<Array>} Datos del sheet
      */
     async fetchData() {
-        const csvUrl = `https://docs.google.com/spreadsheets/d/${this.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.sheetName)}`;
-        
         try {
-            console.log('🌐 Intentando obtener datos de Google Sheets...');
+            // Intentar primero con Apps Script (mejor para producción)
+            if (this.webAppUrl && !this.webAppUrl.includes('undefined') && !this.webAppUrl.includes('null')) {
+                try {
+                    console.log('🌐 Intentando obtener datos vía Apps Script...');
+                    const response = await fetch(this.webAppUrl + '?action=read&sheet=' + encodeURIComponent(this.sheetName), {
+                        method: 'GET',
+                        mode: 'cors',
+                        headers: {
+                            'Accept': 'text/csv'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const csvText = await response.text();
+                        
+                        if (csvText && csvText.trim().length > 0) {
+                            this.data = this.parseCSV(csvText);
+                            
+                            if (this.data.length > 0) {
+                                this.headers = this.data[0];
+                                console.log(`✅ Datos cargados vía Apps Script: ${this.data.length - 1} filas`);
+                            }
+
+                            // Cachear los datos
+                            Storage.setCachedData({
+                                data: this.data,
+                                headers: this.headers,
+                                sheetId: this.sheetId,
+                                sheetName: this.sheetName
+                            });
+
+                            return this.data;
+                        }
+                    }
+                } catch (appsScriptError) {
+                    console.warn('⚠️ Apps Script no disponible, intentando acceso directo...', appsScriptError.message);
+                }
+            }
+            
+            // Fallback: Acceso directo a Google Sheets
+            const csvUrl = `https://docs.google.com/spreadsheets/d/${this.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.sheetName)}`;
+            console.log('🌐 Intentando obtener datos de Google Sheets (directo)...');
             console.log('📍 URL:', csvUrl);
             
             const response = await fetch(csvUrl, {
@@ -70,7 +116,7 @@ const SheetsAPI = {
             
             if (this.data.length > 0) {
                 this.headers = this.data[0];
-                console.log(`✅ Datos cargados: ${this.data.length - 1} filas`);
+                console.log(`✅ Datos cargados (acceso directo): ${this.data.length - 1} filas`);
             }
 
             // Cachear los datos
