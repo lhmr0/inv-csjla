@@ -24,23 +24,45 @@ const DriveIntegration = {
      * Autentica con Google Drive
      */
     async authenticate() {
-        if (!this.isAuthenticated && !this.CLIENT_ID.includes('TU_CLIENT_ID')) {
-            return new Promise((resolve, reject) => {
-                gapi.auth2.getAuthInstance()
-                    .signIn()
-                    .then(user => {
+        if (this.isAuthenticated) {
+            return true;  // Ya autenticado
+        }
+        
+        if (this.CLIENT_ID.includes('TU_CLIENT_ID')) {
+            throw new Error('CLIENT_ID no configurado');
+        }
+
+        return new Promise((resolve, reject) => {
+            try {
+                const auth2 = gapi.auth2.getAuthInstance();
+                
+                if (!auth2) {
+                    throw new Error('Google Auth2 no disponible');
+                }
+
+                if (auth2.isSignedIn.get()) {
+                    // Ya está autenticado
+                    this.isAuthenticated = true;
+                    this.accessToken = auth2.currentUser.get().getAuthResponse().id_token;
+                    console.log('✅ Ya autenticado en Google Drive');
+                    resolve(true);
+                } else {
+                    // Mostrar popup de login
+                    auth2.signIn().then(() => {
                         this.isAuthenticated = true;
-                        this.accessToken = user.getAuthResponse().id_token;
+                        this.accessToken = auth2.currentUser.get().getAuthResponse().id_token;
                         console.log('✅ Autenticado en Google Drive');
                         resolve(true);
-                    })
-                    .catch(error => {
-                        console.error('Error autenticando en Google Drive:', error);
+                    }).catch((error) => {
+                        console.error('Error autenticando:', error);
                         reject(error);
                     });
-            });
-        }
-        return false;
+                }
+            } catch (error) {
+                console.error('Error en authenticate:', error);
+                reject(error);
+            }
+        });
     },
 
     /**
@@ -193,9 +215,14 @@ function initGoogleAPI() {
                         scope: DriveIntegration.SCOPES
                     }).then(() => {
                         console.log('✅ Google Drive API iniciado');
+                        
+                        // Cargar la API de Drive
+                        return gapi.client.load('drive', 'v3');
+                    }).then(() => {
+                        console.log('✅ Drive v3 API cargada');
                     }).catch(error => {
                         console.warn('⚠️ Google Drive no inicializado (OK - es opcional)');
-                        console.log('Para usar Drive, registra http://127.0.0.1:5500 en Google Cloud Console');
+                        console.warn('Detalles:', error.message);
                     });
                 } else {
                     console.log('ℹ️ Google Drive no configurado - Usando almacenamiento local (recomendado)');
