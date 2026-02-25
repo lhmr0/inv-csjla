@@ -1106,6 +1106,20 @@ const UI = {
                             </div>
                         </div>
 
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0;">
+                            <div class="form-group">
+                                <label for="timeRangeStart">⏰ Hora Inicio:</label>
+                                <input type="time" id="timeRangeStart" class="form-control" value="00:00">
+                                <small style="color: var(--text-secondary); margin-top: 0.5rem; display: block;">Hora de inicio del día (00:00 - 23:59)</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="timeRangeEnd">⏰ Hora Fin:</label>
+                                <input type="time" id="timeRangeEnd" class="form-control" value="23:59">
+                                <small style="color: var(--text-secondary); margin-top: 0.5rem; display: block;">Hora de fin del día (00:00 - 23:59)</small>
+                            </div>
+                        </div>
+
                         <div style="background: var(--background-secondary); padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid var(--accent-cyan);">
                             <small>💡 <strong>Tip:</strong> Deja ambos campos vacíos para incluir TODOS los bienes inventariados</small>
                         </div>
@@ -1126,6 +1140,8 @@ const UI = {
         // Establecer fechas por defecto (si hay datos en historial, usar rango útil)
         const startInput = document.getElementById('dateRangeStart');
         const endInput = document.getElementById('dateRangeEnd');
+        const timeStartInput = document.getElementById('timeRangeStart');
+        const timeEndInput = document.getElementById('timeRangeEnd');
         
         // Establecer fecha de inicio como el primer día del mes actual
         const today = new Date();
@@ -1134,6 +1150,8 @@ const UI = {
         
         // Establecer fecha de fin como hoy
         endInput.value = today.toISOString().split('T')[0];
+        
+        // Las horas ya tienen valores por defecto en el HTML (00:00 y 23:59)
 
         // Elementos de control
         const closeBtn = modal.querySelector('.modal-close');
@@ -1144,6 +1162,8 @@ const UI = {
         confirmBtn.onclick = () => {
             const startDate = startInput.value;
             const endDate = endInput.value;
+            const startTime = timeStartInput.value;
+            const endTime = timeEndInput.value;
             
             // Permitir ambas vacías o ambas llenas
             if ((startDate && !endDate) || (!startDate && endDate)) {
@@ -1153,17 +1173,20 @@ const UI = {
             
             // Si ambas están llenas, validar que inicio <= fin
             if (startDate && endDate) {
-                const start = new Date(startDate);
-                const end = new Date(endDate);
+                const start = new Date(`${startDate}T${startTime}`);
+                const end = new Date(`${endDate}T${endTime}`);
                 
                 if (start > end) {
-                    this.showToast('⚠️ La fecha inicio debe ser menor que la fecha fin', 'warning');
+                    this.showToast('⚠️ La hora/fecha inicio debe ser menor que la hora/fecha fin', 'warning');
                     return;
                 }
             }
             
             modal.style.display = 'none';
-            onConfirm(startDate || null, endDate || null);
+            // Enviar fechas con horas incluidas en formato ISO
+            const startDateWithTime = startDate ? `${startDate}T${startTime}` : null;
+            const endDateWithTime = endDate ? `${endDate}T${endTime}` : null;
+            onConfirm(startDateWithTime, endDateWithTime);
         };
 
         // Cancelar

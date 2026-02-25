@@ -1067,8 +1067,8 @@ const App = {
 
     /**
      * Genera reporte Word con rango de fechas específico
-     * @param {string|null} startDate - Fecha inicio (YYYY-MM-DD) o null
-     * @param {string|null} endDate - Fecha fin (YYYY-MM-DD) o null
+     * @param {string|null} startDate - Fecha y hora inicio (YYYY-MM-DDTHH:MM) o null
+     * @param {string|null} endDate - Fecha y hora fin (YYYY-MM-DDTHH:MM) o null
      */
     async generateWordReportWithDates(startDate, endDate) {
         // Mostrar loading inmediatamente
@@ -1096,8 +1096,9 @@ const App = {
             let inventoried = allInventoried;
             if (startDate || endDate) {
                 const cols = CONFIG.sheets.columns;
-                const startDateObj = startDate ? new Date(`${startDate}T00:00:00`) : null;
-                const endDateObj = endDate ? new Date(`${endDate}T23:59:59`) : null;
+                // Las fechas ya incluyen las horas en formato ISO
+                const startDateObj = startDate ? new Date(startDate) : null;
+                const endDateObj = endDate ? new Date(endDate) : null;
                 
                 inventoried = allInventoried.filter(item => {
                     const itemDateStr = item[cols.f_registro];
@@ -1132,11 +1133,23 @@ const App = {
             
             // Agregar información del filtro al inicio
             if (startDate || endDate) {
+                // Formatear fechas con horas para mejor legibilidad
+                const formatDateTimeForReport = (isoDateTime) => {
+                    if (!isoDateTime) return '';
+                    const date = new Date(isoDateTime);
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const year = date.getFullYear();
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    return `${day}/${month}/${year} ${hours}:${minutes}`;
+                };
+                
                 const dateRangeText = startDate && endDate 
-                    ? `${startDate} al ${endDate}`
+                    ? `${formatDateTimeForReport(startDate)} al ${formatDateTimeForReport(endDate)}`
                     : startDate 
-                    ? `Desde ${startDate}`
-                    : `Hasta ${endDate}`;
+                    ? `Desde ${formatDateTimeForReport(startDate)}`
+                    : `Hasta ${formatDateTimeForReport(endDate)}`;
                     
                 sections.push(new docx.Paragraph({
                     text: `REPORTE GENERADO: ${dateRangeText}`,
@@ -1186,8 +1199,8 @@ const App = {
                     ['Tipo:', item[cols.descripcion_denominacion] || '-'],
                     ['Marca:', item[cols.marca] || '-'],
                     ['Modelo:', item[cols.modelo] || '-'],
-                    ['Código Patrimonial:', item[cols.cod_patrim] || '-'],
-                    ['Serie:', item[cols.color] || '-']
+                    ['Código Patrimonial/Código M:', item[cols.cod_patrim] || '-'],
+                    ['SeColorrie:', item[cols.color] || '-']
                 ];
                 
                 equipoInfo.forEach(([label, value]) => {
@@ -1260,13 +1273,13 @@ const App = {
                 }));
                 
                 // Pie de página con datos de registro
-                sections.push(new docx.Paragraph({
+               /*  sections.push(new docx.Paragraph({
                     text: `Registrado por: ${item[cols.registrado_por] || '-'} | Fecha: ${item[cols.f_registro] || '-'}`,
                     spacing: { before: 400 },
                     size: 18,
                     color: '666666',
                     alignment: docx.AlignmentType.CENTER
-                }));
+                })); */
             });
             
             // Actualizar loading: compilando documento
