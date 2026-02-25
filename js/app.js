@@ -90,6 +90,18 @@ const App = {
         if (btnUseManualCode) {
             btnUseManualCode.addEventListener('click', () => this.handleManualImageCode());
         }
+
+        // Manual Code M from image
+        const btnUseManualCodeM = document.getElementById('btnUseManualCodeM');
+        const manualCodeMInput = document.getElementById('manualCodeM');
+        if (btnUseManualCodeM) {
+            btnUseManualCodeM.addEventListener('click', () => this.handleManualCodeMSearch());
+        }
+        if (manualCodeMInput) {
+            manualCodeMInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.handleManualCodeMSearch();
+            });
+        }
         
         // Manual
         UI.elements.btnManualSearch.addEventListener('click', () => this.handleManualSearch());
@@ -421,6 +433,22 @@ const App = {
         document.getElementById('manualImageCode').value = '';
     },
 
+    async handleManualCodeMSearch() {
+        const manualCodeMInput = document.getElementById('manualCodeM');
+        const rawCodeM = manualCodeMInput ? manualCodeMInput.value.trim() : '';
+
+        if (!rawCodeM) {
+            UI.showToast('Ingrese Código M', 'warning');
+            return;
+        }
+
+        await this.searchAndShowProductByCodeM(rawCodeM);
+
+        if (manualCodeMInput) {
+            manualCodeMInput.value = '';
+        }
+    },
+
     /**
      * Procesa una imagen desde archivo
      */
@@ -625,6 +653,63 @@ const App = {
             
         } catch (error) {
             console.error('Error searching product:', error);
+            clearTimeout(loadingTimeout);
+            UI.hideLoading();
+            UI.showToast(CONFIG.messages.connectionError, 'error');
+        }
+    },
+
+    async searchAndShowProductByCodeM(codeM) {
+        const normalizedCodeM = String(codeM || '').trim();
+
+        if (!normalizedCodeM) {
+            UI.showToast('Ingrese Código M válido', 'warning');
+            return;
+        }
+
+        const loadingTimeout = setTimeout(() => {
+            UI.showLoading('Buscando por Código M...');
+        }, 100);
+
+        try {
+            const cached = Storage.getCachedData();
+            if (!cached) {
+                await SheetsAPI.fetchData();
+            }
+
+            const result = SheetsAPI.findByCodeM(normalizedCodeM);
+
+            Storage.addToHistory({
+                code: `M:${normalizedCodeM}`,
+                found: !!result,
+                updated: false,
+                product: result ? result.product : null
+            });
+
+            this.updateHistoryView();
+            clearTimeout(loadingTimeout);
+            UI.hideLoading();
+
+            if (!result) {
+                UI.showToast('⚠️ Código M no encontrado', 'warning');
+                UI.showProductModal(result, `Código M: ${normalizedCodeM}`, async (rowIndex, observations) => {
+                    if (rowIndex === 'NEW') {
+                        await this.addNewProduct(normalizedCodeM, observations);
+                    } else {
+                        await this.updateInventory(rowIndex, observations);
+                    }
+                });
+                return;
+            }
+
+            const patrimonialCode = result.product.cod_patrim || normalizedCodeM;
+            UI.showLastScanned(patrimonialCode);
+            UI.showToast('✅ Resultado encontrado por Código M', 'success');
+            UI.showProductModal(result, patrimonialCode, async (rowIndex, observations) => {
+                await this.updateInventory(rowIndex, observations);
+            });
+        } catch (error) {
+            console.error('Error searching by Código M:', error);
             clearTimeout(loadingTimeout);
             UI.hideLoading();
             UI.showToast(CONFIG.messages.connectionError, 'error');

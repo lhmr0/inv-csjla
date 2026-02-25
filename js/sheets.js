@@ -323,6 +323,58 @@ const SheetsAPI = {
         return normalized;
     },
 
+    normalizeTextForSearch(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+
+        return String(value)
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toUpperCase()
+            .replace(/[\s\-_.:/|]/g, '');
+    },
+
+    findByCodeM(codeM) {
+        if (!this.data || this.data.length <= 1) {
+            return null;
+        }
+
+        const codeMColumn = CONFIG.sheets.columns.cod_m;
+        const normalizedInputText = this.normalizeTextForSearch(codeM);
+        const normalizedInputDigits = this.normalizeCodeForSearch(codeM);
+
+        if (!normalizedInputText && !normalizedInputDigits) {
+            return null;
+        }
+
+        for (let i = 1; i < this.data.length; i++) {
+            const row = this.data[i];
+            const rowValue = row[codeMColumn];
+
+            if (!rowValue) {
+                continue;
+            }
+
+            const rowText = this.normalizeTextForSearch(rowValue);
+            const rowDigits = this.normalizeCodeForSearch(rowValue);
+
+            const textMatch = normalizedInputText && rowText === normalizedInputText;
+            const digitMatch = normalizedInputDigits && rowDigits && rowDigits === normalizedInputDigits;
+
+            if (textMatch || digitMatch) {
+                return {
+                    rowIndex: i + 1,
+                    data: row,
+                    product: this.rowToProduct(row)
+                };
+            }
+        }
+
+        return null;
+    },
+
     /**
      * Convierte una fila a objeto producto
      * @param {Array} row - Fila de datos
