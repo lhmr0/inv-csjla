@@ -860,6 +860,24 @@ const App = {
      * Genera documento Word con los bienes inventariados
      */
     async generateWordReport() {
+        // Mostrar modal para seleccionar fechas
+        UI.showDateRangeModal((startDate, endDate) => {
+            if (startDate === null && endDate === null) {
+                // Usuario canceló
+                return;
+            }
+            
+            // Proceder con la generación del documento
+            this.generateWordReportWithDates(startDate, endDate);
+        });
+    },
+
+    /**
+     * Genera reporte Word con rango de fechas específico
+     * @param {string|null} startDate - Fecha inicio (YYYY-MM-DD) o null
+     * @param {string|null} endDate - Fecha fin (YYYY-MM-DD) o null
+     */
+    async generateWordReportWithDates(startDate, endDate) {
         // Esperar a que docx esté disponible
         if (!window.docx) {
             await window.docxReady;
@@ -872,10 +890,55 @@ const App = {
             return;
         }
         
-        const inventoried = SheetsAPI.getInventoried();
+        const allInventoried = SheetsAPI.getInventoried();
+        
+        // Filtrar por rango de fechas
+        let inventoried = allInventoried;
+        if (startDate || endDate) {
+            const cols = CONFIG.sheets.columns;
+            const startDateObj = startDate ? new Date(startDate) : null;
+            const endDateObj = endDate ? new Date(endDate) : null;
+            
+            inventoried = allInventoried.filter(item => {
+                const itemDateStr = item[cols.f_registro]; // Formato esperado: DD/MM/YYYY o similar
+                
+                if (!itemDateStr) return false; // Saltar items sin fecha
+                
+                try {
+                    // Convertir formato de fecha
+                    let itemDate;
+                    
+                    // Intentar parsear diferentes formatos
+                    if (itemDateStr.includes('/')) {
+                        // Formato DD/MM/YYYY
+                        const [day, month, year] = itemDateStr.split('/');
+                        itemDate = new Date(year, month - 1, day);
+                    } else if (itemDateStr.includes('-')) {
+                        // Formato YYYY-MM-DD
+                        itemDate = new Date(itemDateStr);
+                    } else {
+                        return false;
+                    }
+                    
+                    // Incluir en los resultados si está dentro del rango
+                    if (startDateObj && itemDate < startDateObj) return false;
+                    if (endDateObj) {
+                        // Incluir todo el día final
+                        const endOfDay = new Date(endDateObj);
+                        endOfDay.setHours(23, 59, 59, 999);
+                        if (itemDate > endOfDay) return false;
+                    }
+                    
+                    return true;
+                } catch (e) {
+                    console.warn('Error parsing date:', itemDateStr, e);
+                    return false;
+                }
+            });
+        }
         
         if (inventoried.length === 0) {
-            UI.showToast('No hay bienes inventariados para generar reporte', 'warning');
+            UI.showToast('No hay bienes inventariados en el rango de fechas seleccionado', 'warning');
             return;
         }
         
@@ -884,6 +947,27 @@ const App = {
         try {
             const cols = CONFIG.sheets.columns;
             const sections = [];
+            
+            // Agregar información del filtro al inicio
+            if (startDate || endDate) {
+                sections.push(new docx.Paragraph({
+                    text: `REPORTE GENERADO: ${startDate || 'Desde inicio'} al ${endDate || 'Hasta hoy'}`,
+                    alignment: docx.AlignmentType.CENTER,
+                    spacing: { after: 200 },
+                    italics: true,
+                    size: 20,
+                    color: '666666'
+                }));
+                
+                sections.push(new docx.Paragraph({
+                    text: `Total de bienes: ${inventoried.length}`,
+                    alignment: docx.AlignmentType.CENTER,
+                    spacing: { after: 400 },
+                    bold: true,
+                    size: 22,
+                    color: '1F2937'
+                }));
+            }
             
             // Agregar una sección por cada bien inventariado
             inventoried.forEach((item, index) => {
@@ -1008,7 +1092,17 @@ const App = {
             docx.Packer.toBlob(doc).then(blob => {
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
-                link.download = `Evaluacion_Tecnica_${new Date().toISOString().split('T')[0]}.docx`;
+                
+                // Nombre del archivo con rango de fechas
+                let filename = 'Evaluacion_Tecnica';
+                if (startDate || endDate) {
+                    filename += `_${startDate || 'desde-inicio'}_a_${endDate || 'hasta-hoy'}`;
+                } else {
+                    filename += `_${new Date().toISOString().split('T')[0]}`;
+                }
+                filename += '.docx';
+                
+                link.download = filename;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);

@@ -1069,5 +1069,119 @@ const UI = {
 
         // Mostrar modal
         modal.style.display = 'flex';
+    },
+
+    /**
+     * Muestra modal para seleccionar rango de fechas
+     * @param {Function} onConfirm - Callback con las fechas (startDate, endDate) o null si cancela
+     */
+    showDateRangeModal(onConfirm) {
+        // Crear modal si no existe
+        let modal = document.getElementById('dateRangeModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'dateRangeModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content date-range">
+                    <div class="modal-header">
+                        <h3>📅 Seleccionar Rango de Fechas</h3>
+                        <button class="modal-close" aria-label="Cerrar">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="date-instruction">Elige el rango de fechas de los bienes que deseas incluir en el reporte:</p>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0;">
+                            <div class="form-group">
+                                <label for="dateRangeStart">📅 Fecha Inicio:</label>
+                                <input type="date" id="dateRangeStart" class="form-control" required>
+                                <small style="color: var(--text-secondary); margin-top: 0.5rem; display: block;">Incluye desde esta fecha</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="dateRangeEnd">📅 Fecha Fin:</label>
+                                <input type="date" id="dateRangeEnd" class="form-control" required>
+                                <small style="color: var(--text-secondary); margin-top: 0.5rem; display: block;">Incluye hasta esta fecha</small>
+                            </div>
+                        </div>
+
+                        <div style="background: var(--background-secondary); padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid var(--accent-cyan);">
+                            <small>💡 <strong>Tip:</strong> Deja ambos campos vacíos para incluir TODOS los bienes inventariados</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="dateRangeCancelBtn" class="btn btn-secondary">
+                            ❌ Cancelar
+                        </button>
+                        <button id="dateRangeConfirmBtn" class="btn btn-primary">
+                            ✅ Generar Reporte
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Establecer fechas por defecto (si hay datos en historial, usar rango útil)
+        const startInput = document.getElementById('dateRangeStart');
+        const endInput = document.getElementById('dateRangeEnd');
+        
+        // Establecer fecha de inicio como el primer día del mes actual
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        startInput.value = firstDay.toISOString().split('T')[0];
+        
+        // Establecer fecha de fin como hoy
+        endInput.value = today.toISOString().split('T')[0];
+
+        // Elementos de control
+        const closeBtn = modal.querySelector('.modal-close');
+        const cancelBtn = document.getElementById('dateRangeCancelBtn');
+        const confirmBtn = document.getElementById('dateRangeConfirmBtn');
+
+        // Validar fechas y confirmar
+        confirmBtn.onclick = () => {
+            const startDate = startInput.value;
+            const endDate = endInput.value;
+            
+            // Permitir ambas vacías o ambas llenas
+            if ((startDate && !endDate) || (!startDate && endDate)) {
+                this.showToast('⚠️ Por favor completa ambas fechas o déjalas vacías', 'warning');
+                return;
+            }
+            
+            // Si ambas están llenas, validar que inicio <= fin
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                
+                if (start > end) {
+                    this.showToast('⚠️ La fecha inicio debe ser menor que la fecha fin', 'warning');
+                    return;
+                }
+            }
+            
+            modal.style.display = 'none';
+            onConfirm(startDate || null, endDate || null);
+        };
+
+        // Cancelar
+        const closeModal = () => {
+            modal.style.display = 'none';
+            onConfirm(null, null);
+        };
+
+        closeBtn.onclick = closeModal;
+        cancelBtn.onclick = closeModal;
+
+        // Cerrar al hacer click fuera del modal
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        };
+
+        // Mostrar modal
+        modal.style.display = 'flex';
     }
 };
