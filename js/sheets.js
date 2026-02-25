@@ -9,6 +9,7 @@ const SheetsAPI = {
     webAppUrl: null,
     data: [],
     headers: [],
+    codeIndexMap: null,
 
     /**
      * Extrae el ID del sheet desde la URL
@@ -73,6 +74,7 @@ const SheetsAPI = {
                             if (parsed.length > 1) { // Al menos headers + 1 fila
                                 this.data = parsed;
                                 this.headers = this.data[0];
+                                this.codeIndexMap = null;
                                 console.log(`✅ Datos cargados vía Apps Script: ${this.data.length - 1} filas`);
                                 
                                 // Cachear los datos
@@ -124,6 +126,7 @@ const SheetsAPI = {
             
             if (this.data.length > 0) {
                 this.headers = this.data[0];
+                this.codeIndexMap = null;
                 console.log(`✅ Datos cargados (acceso directo): ${this.data.length - 1} filas`);
             }
 
@@ -147,6 +150,7 @@ const SheetsAPI = {
                 console.log(`✅ Usando datos cacheados: ${cached.data.length - 1} filas`);
                 this.data = cached.data;
                 this.headers = cached.headers;
+                this.codeIndexMap = null;
                 return this.data;
             }
             
@@ -216,11 +220,52 @@ const SheetsAPI = {
      * @returns {Object|null} Producto encontrado o null
      */
     findByCode(code) {
+        if (!this.data || this.data.length <= 1) {
+            return null;
+        }
+
+        const normalizedInput = this.normalizeCodeForSearch(code);
+        if (!normalizedInput) {
+            return null;
+        }
+
+        if (!this.codeIndexMap) {
+            this.buildCodeIndex();
+        }
+
+        const exactMatchIndex = this.codeIndexMap.get(normalizedInput);
+        if (typeof exactMatchIndex === 'number') {
+            const row = this.data[exactMatchIndex];
+            return {
+                rowIndex: exactMatchIndex + 1,
+                data: row,
+                product: this.rowToProduct(row)
+            };
+        }
+
+        const last12 = normalizedInput.slice(-12);
+        if (last12.length === 12) {
+            const last12MatchIndex = this.codeIndexMap.get(last12);
+            if (typeof last12MatchIndex === 'number') {
+                const row = this.data[last12MatchIndex];
+                return {
+                    rowIndex: last12MatchIndex + 1,
+                    data: row,
+                    product: this.rowToProduct(row)
+                };
+            }
+        }
+
         const codeColumn = CONFIG.sheets.columns.cod_patrim;
         
         for (let i = 1; i < this.data.length; i++) { // Empezar desde 1 para saltar headers
             const row = this.data[i];
-            if (row[codeColumn] && row[codeColumn].toString().trim() === code.toString().trim()) {
+            const rowCode = this.normalizeCodeForSearch(row[codeColumn]);
+            if (!rowCode) {
+                continue;
+            }
+
+            if (rowCode === normalizedInput || (normalizedInput.length >= 12 && rowCode === normalizedInput.slice(-12))) {
                 return {
                     rowIndex: i + 1, // +1 porque Google Sheets es 1-indexed
                     data: row,
@@ -229,6 +274,53 @@ const SheetsAPI = {
             }
         }
         return null;
+    },
+
+    buildCodeIndex() {
+        this.codeIndexMap = new Map();
+        const codeColumn = CONFIG.sheets.columns.cod_patrim;
+
+        for (let i = 1; i < this.data.length; i++) {
+            const row = this.data[i];
+            const normalized = this.normalizeCodeForSearch(row[codeColumn]);
+            if (!normalized) {
+                continue;
+            }
+
+            if (!this.codeIndexMap.has(normalized)) {
+                this.codeIndexMap.set(normalized, i);
+            }
+
+            const last12 = normalized.slice(-12);
+            if (last12.length === 12 && !this.codeIndexMap.has(last12)) {
+                this.codeIndexMap.set(last12, i);
+            }
+        }
+    },
+
+    normalizeCodeForSearch(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+
+        let normalized = String(value)
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toUpperCase();
+
+        normalized = normalized
+            .replace(/[OQ]/g, '0')
+            .replace(/[IL]/g, '1')
+            .replace(/S/g, '5')
+            .replace(/B/g, '8')
+            .replace(/[^0-9]/g, '');
+
+        if (normalized.length > 12) {
+            return normalized.slice(-12);
+        }
+
+        return normalized;
     },
 
     /**

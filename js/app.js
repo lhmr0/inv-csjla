@@ -391,7 +391,8 @@ const App = {
      * Maneja el ingreso manual del código desde la imagen
      */
     async handleManualImageCode() {
-        const code = document.getElementById('manualImageCode').value.trim();
+        const rawCode = document.getElementById('manualImageCode').value.trim();
+        const code = this.extractSearchCodeFromText(rawCode);
         
         if (!code) {
             UI.showToast('Ingrese un código', 'warning');
@@ -445,12 +446,13 @@ const App = {
             ]);
             
             if (code) {
-                console.log('✅ Código detectado en imagen:', code);
-                UI.showToast('Código detectado: ' + code, 'success');
-                UI.showLastScanned(code);
+                const normalizedCode = this.extractSearchCodeFromText(code);
+                console.log('✅ Código detectado en imagen:', normalizedCode || code);
+                UI.showToast('Código detectado: ' + (normalizedCode || code), 'success');
+                UI.showLastScanned(normalizedCode || code);
                 
                 // Buscar y mostrar producto
-                await this.searchAndShowProduct(code);
+                await this.searchAndShowProduct(normalizedCode || code);
                 
                 // Limpiar inputs
                 imageInput.value = '';
@@ -485,32 +487,23 @@ const App = {
             
             // Extraer automáticamente números de 12+ dígitos
             // Buscar primero en el texto si hay un bloque de "CÓDIGO SUGERIDO"
-            let defaultSearch = '';
+            let defaultSearch = this.extractSearchCodeFromText(code);
             
             // Buscar línea que contenga "CÓDIGO SUGERIDO" seguida del código
-            const suggestedMatch = code.match(/CÓDIGO SUGERIDO[^\n]*\n📌\s*(\d+)/);
+            const suggestedMatch = code.match(/CODIGO SUGERIDO[^\n]*\n📌\s*(\d+)/i);
             if (suggestedMatch && suggestedMatch[1]) {
                 defaultSearch = suggestedMatch[1];
                 console.log('⭐ Código sugerido encontrado en OCR:', defaultSearch);
-            } else {
-                // Si no, buscar cualquier número de 12+ dígitos
-                const numberPattern = /\b(\d{12,})\b/g;
-                const matches = code.match(numberPattern);
-                if (matches && matches.length > 0) {
-                    defaultSearch = matches[0].substring(0, 12); // Tomar primeros 12 dígitos
-                    console.log('⭐ Número de 12+ dígitos detectado:', defaultSearch);
-                }
             }
             
             UI.showOCRSelectionModal(code, (selectedText) => {
                 if (selectedText && selectedText.trim() !== '') {
-                    // Extraer solo números de la selección
-                    const cleanText = selectedText.replace(/[^\d]/g, '');
+                    const cleanText = this.extractSearchCodeFromText(selectedText);
                     console.log('✅ Usuario confirmó búsqueda con texto:', selectedText);
                     console.log('🔢 Números extraídos:', cleanText);
                     
                     // Usar los números extraídos o el texto limpio
-                    const searchCode = cleanText || selectedText;
+                    const searchCode = cleanText || selectedText.trim();
                     
                     UI.showToast(`🔍 Buscando: ${searchCode}`, 'info');
                     UI.showLastScanned(searchCode);
@@ -527,10 +520,11 @@ const App = {
             // Mostrar el código en un campo editable para que el usuario pueda corregir
             UI.showEditableCodeModal(code, (editedCode) => {
                 if (editedCode && editedCode.trim() !== '') {
-                    console.log('✅ Usuario confirmó código editado:', editedCode);
-                    UI.showToast(`📦 Buscando: ${editedCode}`, 'info');
-                    UI.showLastScanned(editedCode);
-                    this.searchAndShowProduct(editedCode);
+                    const normalizedCode = this.extractSearchCodeFromText(editedCode) || editedCode.trim();
+                    console.log('✅ Usuario confirmó código editado:', normalizedCode);
+                    UI.showToast(`📦 Buscando: ${normalizedCode}`, 'info');
+                    UI.showLastScanned(normalizedCode);
+                    this.searchAndShowProduct(normalizedCode);
                 } else {
                     console.log('❌ Usuario canceló la búsqueda');
                     UI.showToast('Búsqueda cancelada', 'warning');
@@ -543,7 +537,7 @@ const App = {
      * Maneja la búsqueda manual
      */
     async handleManualSearch() {
-        const code = UI.getManualCode();
+        const code = this.extractSearchCodeFromText(UI.getManualCode());
         
         if (!code) {
             UI.showToast('Ingrese un código', 'warning');
@@ -559,6 +553,13 @@ const App = {
      * @param {string} code - Código a buscar
      */
     async searchAndShowProduct(code) {
+        const normalizedCode = this.extractSearchCodeFromText(code) || String(code || '').trim();
+
+        if (!normalizedCode) {
+            UI.showToast('Ingrese un código válido', 'warning');
+            return;
+        }
+
         // Mostrar loading rápidamente pero no bloquear la UI excesivamente
         const loadingTimeout = setTimeout(() => {
             UI.showLoading('Buscando producto...');
@@ -575,11 +576,11 @@ const App = {
             }
             
             // Búsqueda rápida en caché
-            result = SheetsAPI.findByCode(code);
+            result = SheetsAPI.findByCode(normalizedCode);
             
             // Agregar al historial
             Storage.addToHistory({
-                code: code,
+                code: normalizedCode,
                 found: !!result,
                 updated: false,
                 product: result ? result.product : null
@@ -596,9 +597,9 @@ const App = {
             if (!result) {
                 // Resultado no encontrado - mostrar al instante
                 UI.showToast('⚠️ Producto no encontrado. ¿Deseas agregarlo?', 'warning');
-                UI.showProductModal(result, code, async (rowIndex, observations) => {
+                UI.showProductModal(result, normalizedCode, async (rowIndex, observations) => {
                     if (rowIndex === 'NEW') {
-                        await this.addNewProduct(code, observations);
+                        await this.addNewProduct(normalizedCode, observations);
                     } else {
                         await this.updateInventory(rowIndex, observations);
                     }
@@ -606,7 +607,7 @@ const App = {
             } else {
                 // Resultado encontrado - mostrar al instante
                 UI.showToast(CONFIG.messages.productFound, 'success');
-                UI.showProductModal(result, code, async (rowIndex, observations) => {
+                UI.showProductModal(result, normalizedCode, async (rowIndex, observations) => {
                     await this.updateInventory(rowIndex, observations);
                 });
             }
@@ -617,6 +618,38 @@ const App = {
             UI.hideLoading();
             UI.showToast(CONFIG.messages.connectionError, 'error');
         }
+    },
+
+    extractSearchCodeFromText(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+
+        const normalizedText = String(value)
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toUpperCase()
+            .replace(/[OQ]/g, '0')
+            .replace(/[IL]/g, '1')
+            .replace(/S/g, '5')
+            .replace(/B/g, '8');
+
+        const withSeparators = normalizedText.match(/(?:\d[\s\-_.:|]?){12,}/g) || [];
+        const normalizedCandidates = withSeparators
+            .map(item => item.replace(/[^0-9]/g, ''))
+            .filter(item => item.length >= 12)
+            .map(item => item.slice(0, 12));
+
+        if (normalizedCandidates.length > 0) {
+            return normalizedCandidates[0];
+        }
+
+        const compactDigits = normalizedText.replace(/[^0-9]/g, '');
+        if (compactDigits.length >= 12) {
+            return compactDigits.slice(0, 12);
+        }
+
+        return compactDigits;
     },
 
     /**
@@ -861,7 +894,8 @@ const App = {
                 return;
             }
             
-            // Proceder con la generación del documento
+            // Proceder con la generación del documento inmediatamente
+            console.log(`📄 Generando reporte de ${startDate || 'inicio'} a ${endDate || 'hoy'}...`);
             this.generateWordReportWithDates(startDate, endDate);
         });
     },
@@ -872,80 +906,91 @@ const App = {
      * @param {string|null} endDate - Fecha fin (YYYY-MM-DD) o null
      */
     async generateWordReportWithDates(startDate, endDate) {
-        // Esperar a que docx esté disponible
-        if (!window.docx) {
-            await window.docxReady;
-        }
-        const docx = window.docx;
+        // Mostrar loading inmediatamente
+        UI.showLoading(`📄 Generando documento${startDate || endDate ? ' con filtro de fechas' : ''}...`);
         
-        if (!docx) {
-            UI.showToast('⚠️ Error: Librería docx no cargó correctamente. Recarga la página.', 'error');
-            console.error('docx not available:', { windowDocx: window.docx, docxReady: window.docxReady });
-            return;
-        }
-        
-        const allInventoried = SheetsAPI.getInventoried();
-        
-        // Filtrar por rango de fechas
-        let inventoried = allInventoried;
-        if (startDate || endDate) {
-            const cols = CONFIG.sheets.columns;
-            const startDateObj = startDate ? new Date(startDate) : null;
-            const endDateObj = endDate ? new Date(endDate) : null;
-            
-            inventoried = allInventoried.filter(item => {
-                const itemDateStr = item[cols.f_registro]; // Formato esperado: DD/MM/YYYY o similar
-                
-                if (!itemDateStr) return false; // Saltar items sin fecha
-                
-                try {
-                    // Convertir formato de fecha
-                    let itemDate;
-                    
-                    // Intentar parsear diferentes formatos
-                    if (itemDateStr.includes('/')) {
-                        // Formato DD/MM/YYYY
-                        const [day, month, year] = itemDateStr.split('/');
-                        itemDate = new Date(year, month - 1, day);
-                    } else if (itemDateStr.includes('-')) {
-                        // Formato YYYY-MM-DD
-                        itemDate = new Date(itemDateStr);
-                    } else {
-                        return false;
-                    }
-                    
-                    // Incluir en los resultados si está dentro del rango
-                    if (startDateObj && itemDate < startDateObj) return false;
-                    if (endDateObj) {
-                        // Incluir todo el día final
-                        const endOfDay = new Date(endDateObj);
-                        endOfDay.setHours(23, 59, 59, 999);
-                        if (itemDate > endOfDay) return false;
-                    }
-                    
-                    return true;
-                } catch (e) {
-                    console.warn('Error parsing date:', itemDateStr, e);
-                    return false;
-                }
-            });
-        }
-        
-        if (inventoried.length === 0) {
-            UI.showToast('No hay bienes inventariados en el rango de fechas seleccionado', 'warning');
-            return;
-        }
-        
-        UI.showLoading('Generando documento Word...');
+        // Permitir que la UI se actualice antes de hacer el trabajo pesado
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         try {
+            // Esperar a que docx esté disponible
+            if (!window.docx) {
+                await window.docxReady;
+            }
+            const docx = window.docx;
+            
+            if (!docx) {
+                UI.showToast('⚠️ Error: Librería docx no cargó correctamente. Recarga la página.', 'error');
+                UI.hideLoading();
+                return;
+            }
+            
+            const allInventoried = SheetsAPI.getInventoried();
+            
+            // Filtrar por rango de fechas
+            let inventoried = allInventoried;
+            if (startDate || endDate) {
+                const cols = CONFIG.sheets.columns;
+                const startDateObj = startDate ? new Date(startDate) : null;
+                const endDateObj = endDate ? new Date(endDate) : null;
+                
+                inventoried = allInventoried.filter(item => {
+                    const itemDateStr = item[cols.f_registro];
+                    
+                    if (!itemDateStr) return false;
+                    
+                    try {
+                        let itemDate;
+                        
+                        if (itemDateStr.includes('/')) {
+                            const [day, month, year] = itemDateStr.split('/');
+                            itemDate = new Date(year, month - 1, day);
+                        } else if (itemDateStr.includes('-')) {
+                            itemDate = new Date(itemDateStr);
+                        } else {
+                            return false;
+                        }
+                        
+                        if (startDateObj && itemDate < startDateObj) return false;
+                        if (endDateObj) {
+                            const endOfDay = new Date(endDateObj);
+                            endOfDay.setHours(23, 59, 59, 999);
+                            if (itemDate > endOfDay) return false;
+                        }
+                        
+                        return true;
+                    } catch (e) {
+                        console.warn('Error parsing date:', itemDateStr, e);
+                        return false;
+                    }
+                });
+                
+                console.log(`✅ Filtro aplicado: ${inventoried.length} de ${allInventoried.length} bienes`);
+            }
+            
+            if (inventoried.length === 0) {
+                UI.hideLoading();
+                UI.showToast('⚠️ No hay bienes inventariados en el rango de fechas seleccionado', 'warning');
+                return;
+            }
+            
+            // Actualizar loading con cantidad de bienes
+            UI.showLoading(`📄 Generando documento con ${inventoried.length} bien${inventoried.length > 1 ? 'es' : ''}...`);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             const cols = CONFIG.sheets.columns;
             const sections = [];
             
             // Agregar información del filtro al inicio
             if (startDate || endDate) {
+                const dateRangeText = startDate && endDate 
+                    ? `${startDate} al ${endDate}`
+                    : startDate 
+                    ? `Desde ${startDate}`
+                    : `Hasta ${endDate}`;
+                    
                 sections.push(new docx.Paragraph({
-                    text: `REPORTE GENERADO: ${startDate || 'Desde inicio'} al ${endDate || 'Hasta hoy'}`,
+                    text: `REPORTE GENERADO: ${dateRangeText}`,
                     alignment: docx.AlignmentType.CENTER,
                     spacing: { after: 200 },
                     italics: true,
@@ -1075,12 +1120,19 @@ const App = {
                 }));
             });
             
+            // Actualizar loading: compilando documento
+            UI.showLoading('📦 Compilando documento...');
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             // Crear documento
             const doc = new docx.Document({
                 sections: [{
                     children: sections
                 }]
             });
+            
+            // Actualizar loading: generando archivo
+            UI.showLoading('💾 Generando archivo...');
             
             // Descargar documento
             docx.Packer.toBlob(doc).then(blob => {
@@ -1100,8 +1152,10 @@ const App = {
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                
                 UI.hideLoading();
-                UI.showToast(`✅ Documento generado: ${inventoried.length} equipos`, 'success');
+                UI.showToast(`✅ Documento descargado: ${filename}`, 'success');
+                console.log(`✅ Documento generado exitosamente: ${inventoried.length} bienes`);
             });
             
         } catch (error) {

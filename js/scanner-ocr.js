@@ -113,11 +113,42 @@ const BarcodeScanner = {
                 console.log(`📷 Cámara ${index + 1}: ${device.label || 'Sin nombre'}`);
             });
 
+            const preferredRearIndex = this.getPreferredRearCameraIndex();
+            if (preferredRearIndex >= 0) {
+                this.currentDeviceIndex = preferredRearIndex;
+                console.log(`✅ Cámara trasera preferida seleccionada: #${preferredRearIndex + 1}`);
+            }
+
             return this.devices;
         } catch (error) {
             console.error('Error obteniendo cámaras:', error);
             throw error;
         }
+    },
+
+    getPreferredRearCameraIndex() {
+        if (!this.devices || this.devices.length === 0) {
+            return -1;
+        }
+
+        const rearPatterns = [
+            /back/i,
+            /rear/i,
+            /environment/i,
+            /wide/i,
+            /ultra/i,
+            /tele/i,
+            /trasera/i
+        ];
+
+        for (let i = 0; i < this.devices.length; i++) {
+            const label = this.devices[i].label || '';
+            if (rearPatterns.some(pattern => pattern.test(label))) {
+                return i;
+            }
+        }
+
+        return this.devices.length > 1 ? 1 : 0;
     },
 
     /**
@@ -148,6 +179,7 @@ const BarcodeScanner = {
             this.currentStream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     deviceId: device.deviceId ? { exact: device.deviceId } : undefined,
+                    facingMode: { ideal: 'environment' },
                     width: { ideal: 1280 },
                     height: { ideal: 720 }
                 },
@@ -405,11 +437,23 @@ const BarcodeScanner = {
      * @returns {string} Texto formateado con prioridad a 12 dígitos
      */
     extractAndPrioritizeNumbers(text) {
+        const normalizedOCR = this.normalizeOCRText(text);
+
         // Extraer todos los números consecutivos
         const numberPattern = /\d+/g;
-        const allNumbers = text.match(numberPattern) || [];
+        const allNumbers = normalizedOCR.match(numberPattern) || [];
+
+        // Extraer candidatos con separadores (ej: 7464 0626 0465)
+        const groupedPattern = /(?:\d[\s\-_.:|]?){12,}/g;
+        const groupedRaw = normalizedOCR.match(groupedPattern) || [];
+        const groupedNormalized = groupedRaw
+            .map(chunk => chunk.replace(/[^0-9]/g, ''))
+            .filter(chunk => chunk.length >= 12);
+
+        const combinedNumbers = [...allNumbers, ...groupedNormalized];
+        const uniqueNumbers = [...new Set(combinedNumbers)];
         
-        if (allNumbers.length === 0) {
+        if (uniqueNumbers.length === 0) {
             return text; // Si no hay números, retornar texto original
         }
 
@@ -417,8 +461,8 @@ const BarcodeScanner = {
         // MÍNIMO 12 dígitos para considerarse código válido
         const MINIMUM_CODE_LENGTH = 12;
         
-        const numbersValid = allNumbers.filter(n => n.length >= MINIMUM_CODE_LENGTH);
-        const numbersTooShort = allNumbers.filter(n => n.length < MINIMUM_CODE_LENGTH);
+        const numbersValid = uniqueNumbers.filter(n => n.length >= MINIMUM_CODE_LENGTH);
+        const numbersTooShort = uniqueNumbers.filter(n => n.length < MINIMUM_CODE_LENGTH);
         
         // Dentro de los válidos, priorizar exactamente 12
         const numbers12 = numbersValid.filter(n => n.length === 12);
@@ -479,6 +523,21 @@ const BarcodeScanner = {
         displayText.push('📋 Texto OCR original:\n' + text);
 
         return displayText.join('\n');
+    },
+
+    normalizeOCRText(text) {
+        if (!text) {
+            return '';
+        }
+
+        return String(text)
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toUpperCase()
+            .replace(/[OQ]/g, '0')
+            .replace(/[IL]/g, '1')
+            .replace(/S/g, '5')
+            .replace(/B/g, '8');
     },
 
     /**
