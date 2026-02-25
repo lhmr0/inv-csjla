@@ -80,8 +80,13 @@
                         <button id="btnUseManualCode" class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem;">✅ Usar este código</button>
                     </div>
                     <div id="lastScanned" class="last-scanned hidden">
-                        <strong>Último código escaneado:</strong>
-                        <span id="lastCode"></span>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+                            <strong>Último código escaneado:</strong>
+                            <span id="lastCode" style="display: flex; align-items: center; gap: 0.5rem;"></span>
+                            <button id="btnSearchLastCode" class="btn btn-primary btn-small" style="display: none; margin-left: 0.5rem;">
+                                🔍 Buscar
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

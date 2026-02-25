@@ -4,12 +4,13 @@
  */
 const BarcodeScanner = {
     isRunning: false,
-    currentCamera: 'environment',
+    currentCamera: 'environment', // 'environment' = trasera, 'user' = frontal
     cameras: [],
     onDetected: null,
     lastDetectedCode: null,
     lastDetectedTime: 0,
     debounceTime: 2000, // 2 segundos entre escaneos del mismo código
+    usedFrontCamera: false, // Rastrear si ya intentamos cámara frontal
 
     /**
      * Inicializa el escáner
@@ -17,12 +18,18 @@ const BarcodeScanner = {
      */
     async init(callback) {
         this.onDetected = callback;
+        this.usedFrontCamera = false; // Resetear flag
         
         // Obtener lista de cámaras disponibles
         try {
             const devices = await navigator.mediaDevices.enumerateDevices();
             this.cameras = devices.filter(device => device.kind === 'videoinput');
             console.log('Cámaras disponibles:', this.cameras);
+            
+            // Preferir cámara trasera al inicio
+            if (this.cameras.length > 0) {
+                this.currentCamera = 'environment'; // Siempre empezar con trasera
+            }
         } catch (error) {
             console.error('Error enumerating devices:', error);
         }

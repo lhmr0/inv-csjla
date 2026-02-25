@@ -116,11 +116,26 @@ const UI = {
     },
 
     /**
-     * Muestra el último código escaneado
+     * Muestra el último código escaneado con botón de búsqueda
      * @param {string} code - Código escaneado
      */
     showLastScanned(code) {
+        // Mostrar código en span
         this.elements.lastCode.textContent = code;
+        
+        // Mostrar y configurar botón de lupa
+        const btnSearch = document.getElementById('btnSearchLastCode');
+        if (btnSearch) {
+            btnSearch.style.display = 'inline-block';
+            btnSearch.onclick = () => {
+                // Guardar referencia de código para buscar
+                window.lastCodeToSearch = code;
+                // Disparar evento para que app pueda capturarlo
+                const event = new CustomEvent('searchLastCode', { detail: { code } });
+                document.dispatchEvent(event);
+            };
+        }
+        
         this.elements.lastScanned.classList.remove('hidden');
     },
 
@@ -137,6 +152,7 @@ const UI = {
             const product = result.product;
             const isInventoried = product.inventariado && product.inventariado.toUpperCase() === 'SI';
             
+            // Información esencial para mostrar rápidamente
             html = `
                 ${isInventoried ? `
                     <div class="already-inventoried">
@@ -147,119 +163,130 @@ const UI = {
                 ` : ''}
                 
                 <div class="product-info">
-                    <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">🏢 Información del Local</h3>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Nombre del Local:</span>
-                        <span class="product-detail-value">${product.nombre_local || '-'}</span>
-                    </div>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Dirección:</span>
-                        <span class="product-detail-value">${product.direccion_local || '-'}</span>
-                    </div>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Bloque:</span>
-                        <span class="product-detail-value">${product.bloque || '-'}</span>
-                    </div>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Piso:</span>
-                        <span class="product-detail-value">${product.piso || '-'}</span>
-                    </div>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Ambiente:</span>
-                        <span class="product-detail-value">${product.ambiente || '-'}</span>
-                    </div>
-                    
-                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
-                    
-                    <h3 style="color: var(--accent-emerald); margin-bottom: 1rem; margin-top: 1rem;">👤 Información de la Persona</h3>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Apellidos y Nombres:</span>
-                        <span class="product-detail-value">${product.apellidos_nombres || '-'}</span>
-                    </div>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Oficina:</span>
-                        <span class="product-detail-value">${product.nombre_ofi || '-'}</span>
-                    </div>
-                    
-                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
-                    
-                    <h3 style="color: var(--accent-purple); margin-bottom: 1rem; margin-top: 1rem;">📦 Descripción del Bien</h3>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Descripción/Denominación:</span>
-                        <span class="product-detail-value">${product.descripcion_denominacion || '-'}</span>
-                    </div>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Marca:</span>
-                        <span class="product-detail-value">${product.marca || '-'}</span>
-                    </div>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Modelo:</span>
-                        <span class="product-detail-value">${product.modelo || '-'}</span>
-                    </div>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Color:</span>
-                        <span class="product-detail-value">${product.color || '-'}</span>
-                    </div>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Estado de Conservación:</span>
-                        <span class="product-detail-value">${product.estado_conserv || '-'}</span>
-                    </div>
-                    
-                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
-                    
-                    <h3 style="color: var(--warning-color); margin-bottom: 1rem; margin-top: 1rem;">🔖 Información de Codificación</h3>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Código de Patrimonio:</span>
-                        <span class="product-detail-value" style="font-weight: bold; color: var(--accent-cyan);">${product.cod_patrim || '-'}</span>
-                    </div>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Código Inventario:</span>
-                        <span class="product-detail-value">${product.cod_inv || '-'}</span>
-                    </div>
-                    
-                    <div class="product-detail">
-                        <span class="product-detail-label">Código M:</span>
-                        <span class="product-detail-value">${product.cod_m || '-'}</span>
-                    </div>
-                    
-                    ${product.fecha_inv ? `
-                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
-                        
-                        <h3 style="color: var(--success-color); margin-bottom: 1rem; margin-top: 1rem;">📋 Información Adicional</h3>
+                    <!-- Información Esencial (Carga Inmediata) -->
+                    <div class="product-essential-info">
+                        <h3 style="color: var(--accent-purple); margin-bottom: 1rem;">📦 Descripción del Bien</h3>
                         
                         <div class="product-detail">
-                            <span class="product-detail-label">Fecha de Inventario:</span>
-                            <span class="product-detail-value">${product.fecha_inv || '-'}</span>
+                            <span class="product-detail-label">Descripción/Denominación:</span>
+                            <span class="product-detail-value">${product.descripcion_denominacion || '-'}</span>
                         </div>
                         
-                        ${product.usuario ? `
-                            <div class="product-detail">
-                                <span class="product-detail-label">Usuario:</span>
-                                <span class="product-detail-value">${product.usuario || '-'}</span>
-                            </div>
-                        ` : ''}
+                        <div class="product-detail">
+                            <span class="product-detail-label">Código de Patrimonio:</span>
+                            <span class="product-detail-value" style="font-weight: bold; color: var(--accent-cyan);">${product.cod_patrim || '-'}</span>
+                        </div>
                         
-                        ${product.digitador ? `
+                        <div class="product-detail">
+                            <span class="product-detail-label">Marca:</span>
+                            <span class="product-detail-value">${product.marca || '-'}</span>
+                        </div>
+                        
+                        <div class="product-detail">
+                            <span class="product-detail-label">Modelo:</span>
+                            <span class="product-detail-value">${product.modelo || '-'}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Información Completa (Lazy Load) -->
+                    <div class="product-detailed-info" id="detailedInfo" style="display: none; margin-top: 1.5rem;">
+                        <div class="product-detail">
+                            <span class="product-detail-label">Color:</span>
+                            <span class="product-detail-value">${product.color || '-'}</span>
+                        </div>
+                        
+                        <div class="product-detail">
+                            <span class="product-detail-label">Estado de Conservación:</span>
+                            <span class="product-detail-value">${product.estado_conserv || '-'}</span>
+                        </div>
+                        
+                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
+                        
+                        <h3 style="color: var(--accent-cyan); margin-bottom: 1rem; margin-top: 1rem;">🏢 Información del Local</h3>
+                        
+                        <div class="product-detail">
+                            <span class="product-detail-label">Nombre del Local:</span>
+                            <span class="product-detail-value">${product.nombre_local || '-'}</span>
+                        </div>
+                        
+                        <div class="product-detail">
+                            <span class="product-detail-label">Dirección:</span>
+                            <span class="product-detail-value">${product.direccion_local || '-'}</span>
+                        </div>
+                        
+                        <div class="product-detail">
+                            <span class="product-detail-label">Bloque:</span>
+                            <span class="product-detail-value">${product.bloque || '-'}</span>
+                        </div>
+                        
+                        <div class="product-detail">
+                            <span class="product-detail-label">Piso:</span>
+                            <span class="product-detail-value">${product.piso || '-'}</span>
+                        </div>
+                        
+                        <div class="product-detail">
+                            <span class="product-detail-label">Ambiente:</span>
+                            <span class="product-detail-value">${product.ambiente || '-'}</span>
+                        </div>
+                        
+                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
+                        
+                        <h3 style="color: var(--accent-emerald); margin-bottom: 1rem; margin-top: 1rem;">👤 Información de la Persona</h3>
+                        
+                        <div class="product-detail">
+                            <span class="product-detail-label">Apellidos y Nombres:</span>
+                            <span class="product-detail-value">${product.apellidos_nombres || '-'}</span>
+                        </div>
+                        
+                        <div class="product-detail">
+                            <span class="product-detail-label">Oficina:</span>
+                            <span class="product-detail-value">${product.nombre_ofi || '-'}</span>
+                        </div>
+                        
+                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
+                        
+                        <h3 style="color: var(--warning-color); margin-bottom: 1rem; margin-top: 1rem;">🔖 Información de Codificación</h3>
+                        
+                        <div class="product-detail">
+                            <span class="product-detail-label">Código Inventario:</span>
+                            <span class="product-detail-value">${product.cod_inv || '-'}</span>
+                        </div>
+                        
+                        <div class="product-detail">
+                            <span class="product-detail-label">Código M:</span>
+                            <span class="product-detail-value">${product.cod_m || '-'}</span>
+                        </div>
+                        
+                        ${product.fecha_inv ? `
+                            <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
+                            
+                            <h3 style="color: var(--success-color); margin-bottom: 1rem; margin-top: 1rem;">📋 Información Adicional</h3>
+                            
                             <div class="product-detail">
-                                <span class="product-detail-label">Digitador:</span>
-                                <span class="product-detail-value">${product.digitador || '-'}</span>
+                                <span class="product-detail-label">Fecha de Inventario:</span>
+                                <span class="product-detail-value">${product.fecha_inv || '-'}</span>
                             </div>
+                            
+                            ${product.usuario ? `
+                                <div class="product-detail">
+                                    <span class="product-detail-label">Usuario:</span>
+                                    <span class="product-detail-value">${product.usuario || '-'}</span>
+                                </div>
+                            ` : ''}
+                            
+                            ${product.digitador ? `
+                                <div class="product-detail">
+                                    <span class="product-detail-label">Digitador:</span>
+                                    <span class="product-detail-value">${product.digitador || '-'}</span>
+                                </div>
+                            ` : ''}
                         ` : ''}
-                    ` : ''}
+                    </div>
+                    
+                    <!-- Botón para ver más detalles -->
+                    <button id="btnToggleDetails" class="btn btn-secondary btn-small" style="width: 100%; margin-top: 1rem;">
+                        📋 Ver Más Detalles
+                    </button>
                 </div>
                 
                 <div class="inventory-actions">
@@ -308,6 +335,21 @@ const UI = {
         
         this.elements.modalBody.innerHTML = html;
         this.elements.resultModal.classList.remove('hidden');
+        
+        // Agregar evento para botón de "Ver Más Detalles" si el producto fue encontrado
+        if (result) {
+            const btnToggleDetails = document.getElementById('btnToggleDetails');
+            const detailedInfo = document.getElementById('detailedInfo');
+            
+            if (btnToggleDetails && detailedInfo) {
+                let detailsShown = false;
+                btnToggleDetails.addEventListener('click', () => {
+                    detailsShown = !detailsShown;
+                    detailedInfo.style.display = detailsShown ? 'block' : 'none';
+                    btnToggleDetails.textContent = detailsShown ? '📋 Ocultar Detalles' : '📋 Ver Más Detalles';
+                });
+            }
+        }
         
         // Configurar eventos de fotos
         if (result) {

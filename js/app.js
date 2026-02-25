@@ -120,6 +120,14 @@ const App = {
             if (e.target === UI.elements.resultModal) UI.closeModal();
         });
         
+        // Botón de lupa para buscar el último código escaneado
+        document.addEventListener('searchLastCode', (e) => {
+            const code = e.detail.code;
+            if (code) {
+                this.searchAndShowProduct(code);
+            }
+        });
+        
         // Cerrar modal con Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') UI.closeModal();
@@ -557,17 +565,23 @@ const App = {
      * @param {string} code - Código a buscar
      */
     async searchAndShowProduct(code) {
-        UI.showLoading('Buscando producto...');
+        // Mostrar loading rápidamente pero no bloquear la UI excesivamente
+        const loadingTimeout = setTimeout(() => {
+            UI.showLoading('Buscando producto...');
+        }, 100);
         
         try {
-            // Refrescar datos si es necesario
+            // Usar caché si está disponible, sino refrescar datos
+            let result = null;
             const cached = Storage.getCachedData();
+            
             if (!cached) {
+                // Si no hay caché, traer datos del servidor
                 await SheetsAPI.fetchData();
             }
             
-            // Buscar producto
-            const result = SheetsAPI.findByCode(code);
+            // Búsqueda rápida en caché
+            result = SheetsAPI.findByCode(code);
             
             // Agregar al historial
             Storage.addToHistory({
@@ -577,33 +591,37 @@ const App = {
                 product: result ? result.product : null
             });
             
-            // Actualizar vista del historial
+            // Actualizar vista del historial sin esperar
             this.updateHistoryView();
             
-            // Si no encontró, mostrar opción de agregar nuevo
+            // Ocultar loading
+            clearTimeout(loadingTimeout);
+            UI.hideLoading();
+            
+            // Mostrar resultado (encontrado o no encontrado)
             if (!result) {
+                // Resultado no encontrado - mostrar al instante
                 UI.showToast('⚠️ Producto no encontrado. ¿Deseas agregarlo?', 'warning');
                 UI.showProductModal(result, code, async (rowIndex, observations) => {
                     if (rowIndex === 'NEW') {
-                        // Agregar nuevo producto
                         await this.addNewProduct(code, observations);
                     } else {
                         await this.updateInventory(rowIndex, observations);
                     }
                 });
             } else {
-                // Mostrar modal con resultado
+                // Resultado encontrado - mostrar al instante
+                UI.showToast(CONFIG.messages.productFound, 'success');
                 UI.showProductModal(result, code, async (rowIndex, observations) => {
                     await this.updateInventory(rowIndex, observations);
                 });
-                UI.showToast(CONFIG.messages.productFound, 'success');
             }
             
         } catch (error) {
             console.error('Error searching product:', error);
-            UI.showToast(CONFIG.messages.connectionError, 'error');
-        } finally {
+            clearTimeout(loadingTimeout);
             UI.hideLoading();
+            UI.showToast(CONFIG.messages.connectionError, 'error');
         }
     },
 
