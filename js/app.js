@@ -5,6 +5,7 @@
 const App = {
     operator: null,
     isConnected: false,
+    lastAutoManualCode: '',
 
     /**
      * Inicializa la aplicación
@@ -94,6 +95,15 @@ const App = {
         UI.elements.btnManualSearch.addEventListener('click', () => this.handleManualSearch());
         UI.elements.manualCode.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.handleManualSearch();
+        });
+        UI.elements.manualCode.addEventListener('input', () => {
+            const autoCode = this.extractSearchCodeFromText(UI.elements.manualCode.value);
+            if (autoCode && autoCode.length === 12 && autoCode !== this.lastAutoManualCode) {
+                this.lastAutoManualCode = autoCode;
+                UI.showToast(`🔍 Buscando automáticamente: ${autoCode}`, 'info');
+                this.searchAndShowProduct(autoCode);
+                UI.clearManualCode();
+            }
         });
         
         // History
@@ -545,6 +555,7 @@ const App = {
         }
         
         await this.searchAndShowProduct(code);
+        this.lastAutoManualCode = '';
         UI.clearManualCode();
     },
 
@@ -641,15 +652,84 @@ const App = {
             .map(item => item.slice(0, 12));
 
         if (normalizedCandidates.length > 0) {
-            return normalizedCandidates[0];
+            return this.pickPreferred12DigitCode(normalizedCandidates);
         }
 
         const compactDigits = normalizedText.replace(/[^0-9]/g, '');
         if (compactDigits.length >= 12) {
-            return compactDigits.slice(0, 12);
+            const windows = [];
+            for (let i = 0; i <= compactDigits.length - 12; i++) {
+                windows.push(compactDigits.slice(i, i + 12));
+            }
+            return this.pickPreferred12DigitCode(windows);
         }
 
         return compactDigits;
+    },
+
+    pickPreferred12DigitCode(candidates) {
+        const only12 = [...new Set(candidates.filter(code => code && code.length === 12))];
+        if (only12.length === 0) {
+            return '';
+        }
+
+        const startsWith7 = only12.find(code => code.startsWith('7'));
+        if (startsWith7) {
+            return startsWith7;
+        }
+
+        const startsWith1 = only12.find(code => code.startsWith('1'));
+        if (startsWith1) {
+            return `7${startsWith1.slice(1)}`;
+        }
+
+        return only12[0];
+    },
+
+    parseRegistrationDate(rawValue) {
+        if (!rawValue) {
+            return null;
+        }
+
+        const value = String(rawValue).trim();
+        if (!value) {
+            return null;
+        }
+
+        const ddmmyyyyMatch = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+        if (ddmmyyyyMatch) {
+            const day = parseInt(ddmmyyyyMatch[1], 10);
+            const month = parseInt(ddmmyyyyMatch[2], 10);
+            const year = parseInt(ddmmyyyyMatch[3], 10);
+            const hour = parseInt(ddmmyyyyMatch[4] || '0', 10);
+            const minute = parseInt(ddmmyyyyMatch[5] || '0', 10);
+            const second = parseInt(ddmmyyyyMatch[6] || '0', 10);
+            const date = new Date(year, month - 1, day, hour, minute, second);
+            if (!Number.isNaN(date.getTime())) {
+                return date;
+            }
+        }
+
+        const yyyymmddMatch = value.match(/(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+        if (yyyymmddMatch) {
+            const year = parseInt(yyyymmddMatch[1], 10);
+            const month = parseInt(yyyymmddMatch[2], 10);
+            const day = parseInt(yyyymmddMatch[3], 10);
+            const hour = parseInt(yyyymmddMatch[4] || '0', 10);
+            const minute = parseInt(yyyymmddMatch[5] || '0', 10);
+            const second = parseInt(yyyymmddMatch[6] || '0', 10);
+            const date = new Date(year, month - 1, day, hour, minute, second);
+            if (!Number.isNaN(date.getTime())) {
+                return date;
+            }
+        }
+
+        const fallback = new Date(value);
+        if (!Number.isNaN(fallback.getTime())) {
+            return fallback;
+        }
+
+        return null;
     },
 
     /**
@@ -931,38 +1011,22 @@ const App = {
             let inventoried = allInventoried;
             if (startDate || endDate) {
                 const cols = CONFIG.sheets.columns;
-                const startDateObj = startDate ? new Date(startDate) : null;
-                const endDateObj = endDate ? new Date(endDate) : null;
+                const startDateObj = startDate ? new Date(`${startDate}T00:00:00`) : null;
+                const endDateObj = endDate ? new Date(`${endDate}T23:59:59`) : null;
                 
                 inventoried = allInventoried.filter(item => {
                     const itemDateStr = item[cols.f_registro];
                     
                     if (!itemDateStr) return false;
-                    
-                    try {
-                        let itemDate;
-                        
-                        if (itemDateStr.includes('/')) {
-                            const [day, month, year] = itemDateStr.split('/');
-                            itemDate = new Date(year, month - 1, day);
-                        } else if (itemDateStr.includes('-')) {
-                            itemDate = new Date(itemDateStr);
-                        } else {
-                            return false;
-                        }
-                        
-                        if (startDateObj && itemDate < startDateObj) return false;
-                        if (endDateObj) {
-                            const endOfDay = new Date(endDateObj);
-                            endOfDay.setHours(23, 59, 59, 999);
-                            if (itemDate > endOfDay) return false;
-                        }
-                        
-                        return true;
-                    } catch (e) {
-                        console.warn('Error parsing date:', itemDateStr, e);
+                    const itemDate = this.parseRegistrationDate(itemDateStr);
+                    if (!itemDate) {
                         return false;
                     }
+
+                    if (startDateObj && itemDate < startDateObj) return false;
+                    if (endDateObj && itemDate > endDateObj) return false;
+
+                    return true;
                 });
                 
                 console.log(`✅ Filtro aplicado: ${inventoried.length} de ${allInventoried.length} bienes`);
