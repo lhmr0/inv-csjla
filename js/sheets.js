@@ -69,9 +69,6 @@ const SheetsAPI = {
                         
                         // Si Apps Script devolvió datos válidos, usarlos
                         if (csvText && csvText.trim().length > 0) {
-                            console.log('📥 CSV RECIBIDO de Apps Script (primeros 200 chars):', csvText.substring(0, 200));
-                            console.log('📊 Longitud total:', csvText.length, 'caracteres');
-                            
                             const parsed = this.parseCSV(csvText);
                             
                             if (parsed.length > 1) { // Al menos headers + 1 fila
@@ -125,9 +122,6 @@ const SheetsAPI = {
                 throw new Error('La hoja está vacía o no contiene datos.');
             }
             
-            console.log('📥 CSV RECIBIDO (primeros 200 chars):', csvText.substring(0, 200));
-            console.log('📊 Longitud total:', csvText.length, 'caracteres');
-            
             this.data = this.parseCSV(csvText);
             
             if (this.data.length > 0) {
@@ -177,7 +171,6 @@ const SheetsAPI = {
         const hasTabs = firstLine.includes('\t');
         
         const delimiter = (hasTabs && !hasCommas) ? '\t' : ',';
-        console.log(`🔍 Delimitador detectado: "${delimiter === ',' ? 'COMA' : 'TABULACIÓN'}" | Línea 1: ${firstLine.substring(0, 100)}`);
         
         const lines = [];
         let currentLine = [];
@@ -223,14 +216,6 @@ const SheetsAPI = {
             if (currentLine.some(field => field !== '')) {
                 lines.push(currentLine);
             }
-        }
-
-        // DEBUG: Mostrar primeras 3 filas parseadas
-        if (lines.length > 0) {
-            console.log(`✅ CSV parseado: ${lines.length} filas total`);
-            console.log('📊 FILA 0 (Headers):', lines[0]);
-            if (lines.length > 1) console.log('📊 FILA 1 (Primera fila datos):', lines[1]);
-            if (lines.length > 2) console.log('📊 FILA 2 (Segunda fila datos):', lines[2]);
         }
 
         return lines;

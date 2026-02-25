@@ -1112,29 +1112,21 @@ const App = {
                 const startDateObj = startDate ? new Date(startDate) : null;
                 const endDateObj = endDate ? new Date(endDate) : null;
                 
-                console.log(`📊 DEBUG FILTRO: Total de bienes inventariados: ${allInventoried.length}`);
-                console.log(`📊 DEBUG FILTRO: startDate=${startDate}, endDate=${endDate}`);
-                console.log(`📊 DEBUG FILTRO: startDateObj=${startDateObj}, endDateObj=${endDateObj}`);
-                
                 inventoried = allInventoried.filter((item, index) => {
                     const itemDateStr = item[cols.f_registro];
                     
                     if (!itemDateStr) {
-                        console.log(`⚠️ DEBUG: Item ${index} sin fecha (f_registro vacío)`);
                         return false;
                     }
                     
                     const itemDate = this.parseRegistrationDate(itemDateStr);
                     if (!itemDate) {
-                        console.log(`⚠️ DEBUG: Item ${index} con fecha inválida: "${itemDateStr}"`);
                         return false;
                     }
 
                     const passStart = !startDateObj || itemDate >= startDateObj;
                     const passEnd = !endDateObj || itemDate <= endDateObj;
                     const passes = passStart && passEnd;
-                    
-                    console.log(`📋 DEBUG Item ${index}: "${itemDateStr}" → ${itemDate.toISOString()} | start:${passStart} end:${passEnd} | PASA:${passes}`);
                     
                     return passes;
                 });
@@ -1154,21 +1146,6 @@ const App = {
             
             const cols = CONFIG.sheets.columns;
             const sections = [];
-            
-            // DEBUG: Mostrar datos de todos los bienes
-            console.log('\n========================================');
-            console.log('📊 DEBUG: DATOS DE BIENES INVENTARIADOS');
-            console.log('========================================');
-            inventoried.forEach((item, idx) => {
-                console.log(`\n[BIEN ${idx}]`);
-                console.log(`  Tipo: ${item[cols.descripcion_denominacion]}`);
-                console.log(`  Marca: ${item[cols.marca]}`);
-                console.log(`  Modelo: ${item[cols.modelo]}`);
-                console.log(`  Código Patrimonial (col ${cols.cod_patrim}): "${item[cols.cod_patrim]}" (tipo: ${typeof item[cols.cod_patrim]})`);
-                console.log(`  Color: ${item[cols.color]}`);
-                console.log(`  FILA COMPLETA:`, item);
-            });
-            console.log('========================================\n');
             
             // Agregar información del filtro al inicio
             if (startDate || endDate) {
@@ -1245,8 +1222,6 @@ const App = {
                 equipoInfo.forEach(([label, value]) => {
                     // Convertir valor a string de forma segura, incluyendo números y letras
                     const displayValue = value === null || value === undefined ? '-' : String(value).trim();
-                    
-                    console.log(`📄 [TABLA ${index}] ${label} = "${displayValue}" (original: ${JSON.stringify(value)})`);
                     
                     sections.push(new docx.Table({
                         rows: [
