@@ -290,25 +290,26 @@ const UI = {
                 </div>
                 
                 <div class="inventory-actions">
-                    <h4>� Capturar Fotos del Bien (Opcional - Máximo 2)</h4>
-                    <div id="productPhotos" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; min-height: 100px;">
+                    <h4 style="margin-bottom: 1rem;">📸 Capturar Fotos (Opcional - Máx. 2)</h4>
+                    <div id="productPhotos" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; min-height: 80px;">
                         <div style="border: 2px dashed var(--border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: var(--background-secondary);" id="btnAddPhoto">
                             <span style="text-align: center;">
-                                <div style="font-size: 2rem;">📷</div>
-                                <small style="color: var(--text-secondary);">Agregar foto</small>
+                                <div style="font-size: 1.8rem;">📷</div>
+                                <small style="color: var(--text-secondary); font-size: 0.75rem;">Foto</small>
                             </span>
                         </div>
                     </div>
                     <input type="file" id="photoInput" accept="image/*" style="display: none;">
-                    <small style="color: var(--text-secondary); display: block; margin-bottom: 1rem;">Nota: Las fotos se guardarán localmente con los datos del inventario</small>
                     
-                    <h4 style="margin-top: 1.5rem;">�📝 ¿Desea Registrar este Bien en el Inventario?</h4>
+                    <h4 style="margin-top: 1.5rem; margin-bottom: 1rem;">📝 ¿Registrar Bien?</h4>
                     <button id="btnMarkInventoried" class="btn btn-success btn-block">
-                        ✅ ${isInventoried ? 'Actualizar Registro' : 'Sí, Registrar Bien'}
-                    </button>                    <button id="btnSendPhotosToGoogleDrive" class="btn btn-info btn-block" style="margin-top: 0.5rem;">
-                        📤 Enviar Fotos a Google Drive
-                    </button>                    <button id="btnCancelRegistration" class="btn btn-secondary btn-block" style="margin-top: 0.5rem;">
-                        ❌ No, Cancelar
+                        ✅ ${isInventoried ? 'Actualizar' : 'Registrar'}
+                    </button>
+                    <button id="btnSendPhotosToGoogleDrive" class="btn btn-info btn-block" style="margin-top: 0.5rem; display: none;">
+                        📤 Google Drive
+                    </button>
+                    <button id="btnCancelRegistration" class="btn btn-secondary btn-block" style="margin-top: 0.5rem;">
+                        ❌ Cancelar
                     </button>
                 </div>
             `;
@@ -316,14 +317,14 @@ const UI = {
             html = `
                 <div class="product-not-found">
                     <div class="icon">❌</div>
-                    <h3>Bien No Encontrado</h3>
-                    <p>El código de patrimonio <strong>${code}</strong> no existe en el inventario.</p>
+                    <h3>No Encontrado</h3>
+                    <p>Código: <strong>${code}</strong></p>
                     <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
-                        ¿Deseas agregarlo como un nuevo bien?
+                        ¿Agregarlo como nuevo bien?
                     </p>
-                    <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+                    <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; flex-direction: column;">
                         <button id="btnAddNewProduct" class="btn btn-primary btn-block">
-                            ➕ Agregar Como Nuevo Bien
+                            ➕ Agregar
                         </button>
                         <button id="btnCancelSearch" class="btn btn-secondary btn-block">
                             ❌ Cancelar
@@ -335,6 +336,12 @@ const UI = {
         
         this.elements.modalBody.innerHTML = html;
         this.elements.resultModal.classList.remove('hidden');
+        
+        // Prevenir cierre al clickear fuera del modal
+        this.elements.resultModal.onclick = (e) => {
+            e.stopPropagation();
+            // NO cerrar si se clickea fuera
+        };
         
         // Agregar evento para botón de "Ver Más Detalles" si el producto fue encontrado
         if (result) {
@@ -841,11 +848,9 @@ const UI = {
         closeBtn.onclick = closeModal;
         cancelBtn.onclick = closeModal;
 
-        // Cerrar al hacer click fuera del modal
+        // NO cerrar al hacer click fuera del modal - Solo con los botones
         modal.onclick = (e) => {
-            if (e.target === modal) {
-                closeModal();
-            }
+            e.stopPropagation();
         };
 
         // Mostrar modal
@@ -932,11 +937,9 @@ const UI = {
         closeBtn.onclick = closeModal;
         cancelBtn.onclick = closeModal;
 
-        // Cerrar al hacer click fuera del modal
+        // NO cerrar al hacer click fuera del modal - Solo con los botones
         modal.onclick = (e) => {
-            if (e.target === modal) {
-                closeModal();
-            }
+            e.stopPropagation();
         };
 
         // Mostrar modal
@@ -1060,11 +1063,9 @@ const UI = {
         closeBtn.onclick = closeModal;
         cancelBtn.onclick = closeModal;
 
-        // Cerrar al hacer click fuera del modal
+        // NO cerrar al hacer click fuera del modal - Solo con los botones
         modal.onclick = (e) => {
-            if (e.target === modal) {
-                closeModal();
-            }
+            e.stopPropagation();
         };
 
         // Mostrar modal
@@ -1174,11 +1175,9 @@ const UI = {
         closeBtn.onclick = closeModal;
         cancelBtn.onclick = closeModal;
 
-        // Cerrar al hacer click fuera del modal
+        // NO cerrar al hacer click fuera del modal - Solo con los botones
         modal.onclick = (e) => {
-            if (e.target === modal) {
-                closeModal();
-            }
+            e.stopPropagation();
         };
 
         // Mostrar modal

@@ -114,11 +114,10 @@ const App = {
             UI.elements.btnExportInventorieds.addEventListener('click', () => this.exportInventoried());
         }
         
-        // Modal
+        // Modal - Solo cerrar con botón X
         UI.elements.closeModal.addEventListener('click', () => UI.closeModal());
-        UI.elements.resultModal.addEventListener('click', (e) => {
-            if (e.target === UI.elements.resultModal) UI.closeModal();
-        });
+        // NO permitir cerrar al clickear afuera del modal
+        // NO permitir cerrar con Escape
         
         // Botón de lupa para buscar el último código escaneado
         document.addEventListener('searchLastCode', (e) => {
@@ -126,11 +125,6 @@ const App = {
             if (code) {
                 this.searchAndShowProduct(code);
             }
-        });
-        
-        // Cerrar modal con Escape
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') UI.closeModal();
         });
         
         // Manejar visibilidad de la página (pausar escáner)
