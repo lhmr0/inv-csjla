@@ -776,12 +776,24 @@ const App = {
             return null;
         }
 
-        const value = String(rawValue).trim();
+        let value = String(rawValue).trim();
         if (!value) {
             return null;
         }
 
-        const ddmmyyyyMatch = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+        // Normalizar formato DD/M/YYYY o D/M/YYYY a DD/MM/YYYY
+        // Buscar patrón: números/números/números
+        const normalizedMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(.*)/);
+        if (normalizedMatch) {
+            const day = String(normalizedMatch[1]).padStart(2, '0');
+            const month = String(normalizedMatch[2]).padStart(2, '0');
+            const year = normalizedMatch[3];
+            const rest = normalizedMatch[4];
+            value = `${day}/${month}/${year}${rest}`;
+        }
+
+        // Formato DD/MM/YYYY con mes y día de 2 dígitos: "25/02/2026, 14:38:09" o "25/02/2026 14:33"
+        const ddmmyyyyMatch = value.match(/(\d{2})\/(\d{2})\/(\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
         if (ddmmyyyyMatch) {
             const day = parseInt(ddmmyyyyMatch[1], 10);
             const month = parseInt(ddmmyyyyMatch[2], 10);
@@ -795,7 +807,7 @@ const App = {
             }
         }
 
-        const yyyymmddMatch = value.match(/(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+        const yyyymmddMatch = value.match(/(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
         if (yyyymmddMatch) {
             const year = parseInt(yyyymmddMatch[1], 10);
             const month = parseInt(yyyymmddMatch[2], 10);
@@ -1100,19 +1112,31 @@ const App = {
                 const startDateObj = startDate ? new Date(startDate) : null;
                 const endDateObj = endDate ? new Date(endDate) : null;
                 
-                inventoried = allInventoried.filter(item => {
+                console.log(`📊 DEBUG FILTRO: Total de bienes inventariados: ${allInventoried.length}`);
+                console.log(`📊 DEBUG FILTRO: startDate=${startDate}, endDate=${endDate}`);
+                console.log(`📊 DEBUG FILTRO: startDateObj=${startDateObj}, endDateObj=${endDateObj}`);
+                
+                inventoried = allInventoried.filter((item, index) => {
                     const itemDateStr = item[cols.f_registro];
                     
-                    if (!itemDateStr) return false;
+                    if (!itemDateStr) {
+                        console.log(`⚠️ DEBUG: Item ${index} sin fecha (f_registro vacío)`);
+                        return false;
+                    }
+                    
                     const itemDate = this.parseRegistrationDate(itemDateStr);
                     if (!itemDate) {
+                        console.log(`⚠️ DEBUG: Item ${index} con fecha inválida: "${itemDateStr}"`);
                         return false;
                     }
 
-                    if (startDateObj && itemDate < startDateObj) return false;
-                    if (endDateObj && itemDate > endDateObj) return false;
-
-                    return true;
+                    const passStart = !startDateObj || itemDate >= startDateObj;
+                    const passEnd = !endDateObj || itemDate <= endDateObj;
+                    const passes = passStart && passEnd;
+                    
+                    console.log(`📋 DEBUG Item ${index}: "${itemDateStr}" → ${itemDate.toISOString()} | start:${passStart} end:${passEnd} | PASA:${passes}`);
+                    
+                    return passes;
                 });
                 
                 console.log(`✅ Filtro aplicado: ${inventoried.length} de ${allInventoried.length} bienes`);
@@ -1130,6 +1154,21 @@ const App = {
             
             const cols = CONFIG.sheets.columns;
             const sections = [];
+            
+            // DEBUG: Mostrar datos de todos los bienes
+            console.log('\n========================================');
+            console.log('📊 DEBUG: DATOS DE BIENES INVENTARIADOS');
+            console.log('========================================');
+            inventoried.forEach((item, idx) => {
+                console.log(`\n[BIEN ${idx}]`);
+                console.log(`  Tipo: ${item[cols.descripcion_denominacion]}`);
+                console.log(`  Marca: ${item[cols.marca]}`);
+                console.log(`  Modelo: ${item[cols.modelo]}`);
+                console.log(`  Código Patrimonial (col ${cols.cod_patrim}): "${item[cols.cod_patrim]}" (tipo: ${typeof item[cols.cod_patrim]})`);
+                console.log(`  Color: ${item[cols.color]}`);
+                console.log(`  FILA COMPLETA:`, item);
+            });
+            console.log('========================================\n');
             
             // Agregar información del filtro al inicio
             if (startDate || endDate) {
@@ -1199,11 +1238,16 @@ const App = {
                     ['Tipo:', item[cols.descripcion_denominacion] || '-'],
                     ['Marca:', item[cols.marca] || '-'],
                     ['Modelo:', item[cols.modelo] || '-'],
-                    ['Código Patrimonial/Código M:', item[cols.cod_patrim] || '-'],
-                    ['SeColorrie:', item[cols.color] || '-']
+                    ['Código Patrimonial:', item[cols.cod_patrim] || '-'],
+                    ['Color:', item[cols.color] || '-']
                 ];
                 
                 equipoInfo.forEach(([label, value]) => {
+                    // Convertir valor a string de forma segura, incluyendo números y letras
+                    const displayValue = value === null || value === undefined ? '-' : String(value).trim();
+                    
+                    console.log(`📄 [TABLA ${index}] ${label} = "${displayValue}" (original: ${JSON.stringify(value)})`);
+                    
                     sections.push(new docx.Table({
                         rows: [
                             new docx.TableRow({
@@ -1213,7 +1257,7 @@ const App = {
                                         width: { size: 30, type: docx.WidthType.PERCENTAGE }
                                     }),
                                     new docx.TableCell({
-                                        children: [new docx.Paragraph({ text: String(value) })],
+                                        children: [new docx.Paragraph({ text: displayValue })],
                                         width: { size: 70, type: docx.WidthType.PERCENTAGE }
                                     })
                                 ]
@@ -1271,15 +1315,6 @@ const App = {
                     text: '',
                     spacing: { after: 200 }
                 }));
-                
-                // Pie de página con datos de registro
-               /*  sections.push(new docx.Paragraph({
-                    text: `Registrado por: ${item[cols.registrado_por] || '-'} | Fecha: ${item[cols.f_registro] || '-'}`,
-                    spacing: { before: 400 },
-                    size: 18,
-                    color: '666666',
-                    alignment: docx.AlignmentType.CENTER
-                })); */
             });
             
             // Actualizar loading: compilando documento
@@ -1347,11 +1382,8 @@ const App = {
                 'Descripción',
                 'Marca',
                 'Modelo',
-                'Estado de Conservación',
                 'Fecha de Inventario',
                 'Registrado por',
-                'Local',
-                'Oficina'
             ];
             
             // Datos del CSV
@@ -1360,11 +1392,8 @@ const App = {
                 item[cols.descripcion_denominacion] || '-',
                 item[cols.marca] || '-',
                 item[cols.modelo] || '-',
-                item[cols.estado_conserv] || '-',
                 item[cols.f_registro] || '-',
                 item[cols.registrado_por] || '-',
-                item[cols.nombre_local] || '-',
-                item[cols.nombre_ofi] || '-'
             ]);
             
             // Convertir a CSV
