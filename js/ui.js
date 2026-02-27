@@ -32,6 +32,7 @@ const UI = {
             btnStartScan: document.getElementById('btnStartScan'),
             btnStopScan: document.getElementById('btnStopScan'),
             btnSwitchCamera: document.getElementById('btnSwitchCamera'),
+            btnCaptureFrame: document.getElementById('btnCaptureFrame'),
             lastScanned: document.getElementById('lastScanned'),
             lastCode: document.getElementById('lastCode'),
             
