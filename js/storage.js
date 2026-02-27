@@ -140,9 +140,9 @@ const Storage = {
             ...entry,
             timestamp: new Date().toISOString()
         });
-        // Mantener solo los últimos 100 registros
-        if (history.length > 100) {
-            history.pop();
+        // Mantener solo los últimos 150 registros para mejor performance
+        if (history.length > 150) {
+            history.splice(150);
         }
         return this.set(CONFIG.storage.keys.history, history);
     },
@@ -247,23 +247,50 @@ const Storage = {
      */
     clearOldData() {
         try {
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                // Eliminar datos de más de 7 días
-                if (key && key.includes('history')) {
-                    try {
-                        const value = localStorage.getItem(key);
-                        const data = JSON.parse(value || '{}');
-                        if (data.timestamp && Date.now() - data.timestamp > 7 * 24 * 60 * 60 * 1000) {
-                            keysToRemove.push(key);
+            // Limpiar historial excesivo (mantener solo los últimos 150)
+            const history = this.getHistory();
+            if (history.length > 200) {
+                const cleaned = history.slice(-150);
+                localStorage.setItem(CONFIG.storage.keys.history, JSON.stringify(cleaned));
+                console.log(`🗑️ Historial limpiado: ${history.length} → ${cleaned.length}`);
+            }
+            
+            // Limpiar fotos antiguas (más de 3 días)
+            const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+            const photosStr = localStorage.getItem(CONFIG.storage.keys.photos);
+            if (photosStr) {
+                try {
+                    const photos = JSON.parse(photosStr);
+                    let cleanedCount = 0;
+                    Object.keys(photos).forEach(key => {
+                        if (photos[key] && photos[key].timestamp) {
+                            if (typeof photos[key].timestamp === 'string') {
+                                if (new Date(photos[key].timestamp).getTime() < threeDaysAgo) {
+                                    delete photos[key];
+                                    cleanedCount++;
+                                }
+                            }
                         }
-                    } catch (e) {}
+                    });
+                    if (cleanedCount > 0) {
+                        localStorage.setItem(CONFIG.storage.keys.photos, JSON.stringify(photos));
+                        console.log(`🗑️ Fotos antiguas limpiadas: ${cleanedCount}`);
+                    }
+                } catch (e) {
+                    console.warn('Error limpiando fotos antiguas:', e);
                 }
             }
             
-            keysToRemove.forEach(key => this.remove(key));
-            console.log(`🗑️ Limpiados ${keysToRemove.length} registros antiguos`);
+            // Verificar si el caché es muy antiguo (más de 7 días)
+            const cached = this.getCachedData();
+            if (cached && cached.timestamp) {
+                const cacheAge = Date.now() - cached.timestamp;
+                if (cacheAge > 7 * 24 * 60 * 60 * 1000) {
+                    this.remove(CONFIG.storage.keys.cachedData);
+                    console.log('🗑️ Caché antiguo removido');
+                }
+            }
+            
             return true;
         } catch (error) {
             console.error('Error limpiando datos antiguos:', error);

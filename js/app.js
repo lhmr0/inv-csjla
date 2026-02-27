@@ -657,8 +657,6 @@ const App = {
             return;
         }
 
-        // Usar temporizador para medir velocidad de búsqueda
-        const startTime = performance.now();
         let showLoadingTimeout = null;
         
         try {
@@ -677,21 +675,12 @@ const App = {
             // Búsqueda rápida en caché
             result = SheetsAPI.findByCode(normalizedCode);
             
-            // Agregar al historial sin esperar
-            Storage.addToHistory({
-                code: normalizedCode,
-                found: !!result,
-                updated: false,
-                product: result ? result.product : null
-            });
-            
-            // Actualizar vista del historial en background
-            this.updateHistoryView();
-            
-            // Cancelar loading si aún no se mostró
+            // Limpiar loading ANTES de mostrar modal
             if (showLoadingTimeout) {
                 clearTimeout(showLoadingTimeout);
+                showLoadingTimeout = null;
             }
+            UI.hideLoading();
             
             // Mostrar resultado (encontrado o no encontrado)
             if (!result) {
@@ -712,8 +701,16 @@ const App = {
                 });
             }
             
-            // Ocultar loading después de mostrar modal
-            UI.hideLoading();
+            // Agregar al historial DESPUÉS en background sin bloquear
+            setTimeout(() => {
+                Storage.addToHistory({
+                    code: normalizedCode,
+                    found: !!result,
+                    updated: false,
+                    product: result ? result.product : null
+                });
+                this.updateHistoryView();
+            }, 0);
             
         } catch (error) {
             console.error('Error searching product:', error);
@@ -744,16 +741,12 @@ const App = {
 
             const result = SheetsAPI.findByCodeM(normalizedCodeM);
 
-            Storage.addToHistory({
-                code: `M:${normalizedCodeM}`,
-                found: !!result,
-                updated: false,
-                product: result ? result.product : null
-            });
-
-            this.updateHistoryView();
-            
-            if (showLoadingTimeout) clearTimeout(showLoadingTimeout);
+            // Limpiar loading ANTES de mostrar modal
+            if (showLoadingTimeout) {
+                clearTimeout(showLoadingTimeout);
+                showLoadingTimeout = null;
+            }
+            UI.hideLoading();
 
             if (!result) {
                 UI.showToast('⚠️ Código M no encontrado', 'warning');
@@ -764,7 +757,6 @@ const App = {
                         await this.updateInventory(rowIndex, observations);
                     }
                 });
-                UI.hideLoading();
                 return;
             }
 
@@ -775,7 +767,17 @@ const App = {
                 await this.updateInventory(rowIndex, observations);
             });
             
-            UI.hideLoading();
+            // Agregar al historial DESPUÉS en background sin bloquear
+            setTimeout(() => {
+                Storage.addToHistory({
+                    code: `M:${normalizedCodeM}`,
+                    found: !!result,
+                    updated: false,
+                    product: result ? result.product : null
+                });
+                this.updateHistoryView();
+            }, 0);
+            
         } catch (error) {
             console.error('Error searching by Código M:', error);
             if (showLoadingTimeout) clearTimeout(showLoadingTimeout);

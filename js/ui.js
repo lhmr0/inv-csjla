@@ -203,49 +203,6 @@ const UI = {
                         
                         <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
                         
-                        <h3 style="color: var(--accent-cyan); margin-bottom: 1rem; margin-top: 1rem;">🏢 Información del Local</h3>
-                        
-                        <div class="product-detail">
-                            <span class="product-detail-label">Nombre del Local:</span>
-                            <span class="product-detail-value">${product.nombre_local || '-'}</span>
-                        </div>
-                        
-                        <div class="product-detail">
-                            <span class="product-detail-label">Dirección:</span>
-                            <span class="product-detail-value">${product.direccion_local || '-'}</span>
-                        </div>
-                        
-                        <div class="product-detail">
-                            <span class="product-detail-label">Bloque:</span>
-                            <span class="product-detail-value">${product.bloque || '-'}</span>
-                        </div>
-                        
-                        <div class="product-detail">
-                            <span class="product-detail-label">Piso:</span>
-                            <span class="product-detail-value">${product.piso || '-'}</span>
-                        </div>
-                        
-                        <div class="product-detail">
-                            <span class="product-detail-label">Ambiente:</span>
-                            <span class="product-detail-value">${product.ambiente || '-'}</span>
-                        </div>
-                        
-                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
-                        
-                        <h3 style="color: var(--accent-emerald); margin-bottom: 1rem; margin-top: 1rem;">👤 Información de la Persona</h3>
-                        
-                        <div class="product-detail">
-                            <span class="product-detail-label">Apellidos y Nombres:</span>
-                            <span class="product-detail-value">${product.apellidos_nombres || '-'}</span>
-                        </div>
-                        
-                        <div class="product-detail">
-                            <span class="product-detail-label">Oficina:</span>
-                            <span class="product-detail-value">${product.nombre_ofi || '-'}</span>
-                        </div>
-                        
-                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-light);">
-                        
                         <h3 style="color: var(--warning-color); margin-bottom: 1rem; margin-top: 1rem;">🔖 Información de Codificación</h3>
                         
                         <div class="product-detail">
@@ -291,23 +248,9 @@ const UI = {
                 </div>
                 
                 <div class="inventory-actions">
-                    <h4 style="margin-bottom: 1rem;">📸 Capturar Fotos (Opcional - Máx. 2)</h4>
-                    <div id="productPhotos" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; min-height: 80px;">
-                        <div style="border: 2px dashed var(--border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: var(--background-secondary);" id="btnAddPhoto">
-                            <span style="text-align: center;">
-                                <div style="font-size: 1.8rem;">📷</div>
-                                <small style="color: var(--text-secondary); font-size: 0.75rem;">Foto</small>
-                            </span>
-                        </div>
-                    </div>
-                    <input type="file" id="photoInput" accept="image/*" style="display: none;">
-                    
-                    <h4 style="margin-top: 1.5rem; margin-bottom: 1rem;">📝 ¿Registrar Bien?</h4>
+                    <h4 style="margin-bottom: 1rem;">📝 ¿Registrar Bien?</h4>
                     <button id="btnMarkInventoried" class="btn btn-success btn-block">
                         ✅ ${isInventoried ? 'Actualizar' : 'Registrar'}
-                    </button>
-                    <button id="btnSendPhotosToGoogleDrive" class="btn btn-info btn-block" style="margin-top: 0.5rem; display: none;">
-                        📤 Google Drive
                     </button>
                     <button id="btnCancelRegistration" class="btn btn-secondary btn-block" style="margin-top: 0.5rem;">
                         ❌ Cancelar
@@ -359,103 +302,15 @@ const UI = {
             }
         }
         
-        // Configurar eventos de fotos
-        if (result) {
-            const btnAddPhoto = document.getElementById('btnAddPhoto');
-            const photoInput = document.getElementById('photoInput');
-            const photosContainer = document.getElementById('productPhotos');
-            let photos = [];
-            
-            if (btnAddPhoto) {
-                btnAddPhoto.addEventListener('click', () => {
-                    photoInput.click();
-                });
-                
-                photoInput.addEventListener('change', (e) => {
-                    if (e.target.files.length > 0 && photos.length < 2) {
-                        const file = e.target.files[0];
-                        const reader = new FileReader();
-                        
-                        reader.onload = (event) => {
-                            const photoData = {
-                                data: event.target.result,
-                                timestamp: new Date().toISOString(),
-                                code: code
-                            };
-                            photos.push(photoData);
-                            
-                            // Actualizar referencia global y visibilidad del botón
-                            window.currentProductPhotos = photos;
-                            UI.updateDriveButtonVisibility();
-                            console.log(`📸 Foto capturada (${window.currentProductPhotos.length}/2)`);
-                            
-                            // Renderizar foto
-                            const photoEl = document.createElement('div');
-                            photoEl.style.position = 'relative';
-                            photoEl.innerHTML = `
-                                <img src="${event.target.result}" style="width: 100%; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-light);">
-                                <button class="btn btn-danger btn-small" style="position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; padding: 0; font-size: 0.8rem;">✕</button>
-                            `;
-                            
-                            photoEl.querySelector('button').addEventListener('click', () => {
-                                photos = photos.filter((_, i) => i !== Array.from(photosContainer.children).indexOf(photoEl));
-                                photoEl.remove();
-                                
-                                // Actualizar referencia global al eliminar foto
-                                window.currentProductPhotos = photos;
-                                UI.updateDriveButtonVisibility();
-                                console.log(`🗑️ Foto eliminada (${window.currentProductPhotos.length}/2)`);
-                                
-                                if (photos.length === 0) {
-                                    btnAddPhoto.style.display = 'flex';
-                                }
-                                if (photos.length < 2) {
-                                    btnAddPhoto.style.display = 'flex';
-                                }
-                            });
-                            
-                            photosContainer.insertBefore(photoEl, btnAddPhoto);
-                            
-                            if (photos.length >= 2) {
-                                btnAddPhoto.style.display = 'none';
-                            }
-                        };
-                        
-                        reader.readAsDataURL(file);
-                        photoInput.value = '';
-                    } else if (photos.length >= 2) {
-                        alert('Máximo 2 fotos permitidas');
-                        photoInput.value = '';
-                    }
-                });
-            }
-            
-            // Guardar fotos en objeto para uso posterior
-            window.currentProductPhotos = photos;
-            
-            // Actualizar visibilidad del botón de Drive
-            this.updateDriveButtonVisibility();
-        }
-        
         // Configurar evento de actualización
         if (result) {
             const btnUpdate = document.getElementById('btnMarkInventoried');
             const btnCancel = document.getElementById('btnCancelRegistration');
-            const btnSendDrive = document.getElementById('btnSendPhotosToGoogleDrive');
             
             btnUpdate.addEventListener('click', () => {
-                onUpdate(result.rowIndex, '', window.currentProductPhotos || []);
+                onUpdate(result.rowIndex, '', []);
                 this.closeModal();
             });
-            
-            // Botón para enviar fotos a Drive
-            if (btnSendDrive) {
-                btnSendDrive.addEventListener('click', () => {
-                    App.sendPhotosToGoogleDrive();
-                });
-                // Actualizar visibilidad inicial
-                this.updateDriveButtonVisibility();
-            }
             
             btnCancel.addEventListener('click', () => {
                 this.closeModal();
@@ -485,7 +340,16 @@ const UI = {
      * Cierra el modal
      */
     closeModal() {
+        // Limpiar completamente el modal para evitar memory leaks
+        if (this.elements.modalBody) {
+            this.elements.modalBody.innerHTML = '';
+        }
         this.elements.resultModal.classList.add('hidden');
+        
+        // Limpiar referencias globales
+        if (window.currentProductPhotos) {
+            window.currentProductPhotos = [];
+        }
     },
 
     /**
