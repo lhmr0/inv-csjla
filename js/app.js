@@ -101,6 +101,14 @@ const App = {
             manualCodeMInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.handleManualCodeMSearch();
             });
+            // Búsqueda automática al llegar a 12 caracteres
+            manualCodeMInput.addEventListener('input', (e) => {
+                const codeM = e.target.value.trim();
+                if (codeM.length === 12) {
+                    UI.showToast(`🔍 Buscando automáticamente: ${codeM}`, 'info');
+                    this.handleManualCodeMSearch();
+                }
+            });
         }
         
         // Manual
@@ -108,12 +116,12 @@ const App = {
         UI.elements.manualCode.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.handleManualSearch();
         });
-        UI.elements.manualCode.addEventListener('input', () => {
+        UI.elements.manualCode.addEventListener('input', async () => {
             const autoCode = this.extractSearchCodeFromText(UI.elements.manualCode.value);
             if (autoCode && autoCode.length === 12 && autoCode !== this.lastAutoManualCode) {
                 this.lastAutoManualCode = autoCode;
                 UI.showToast(`🔍 Buscando automáticamente: ${autoCode}`, 'info');
-                this.searchAndShowProduct(autoCode);
+                await this.searchAndShowProduct(autoCode);
                 UI.clearManualCode();
             }
         });
@@ -602,7 +610,7 @@ const App = {
         // Mostrar loading rápidamente pero no bloquear la UI excesivamente
         const loadingTimeout = setTimeout(() => {
             UI.showLoading('Buscando producto...');
-        }, 100);
+        }, 50);
         
         try {
             // Usar caché si está disponible, sino refrescar datos
@@ -1147,7 +1155,7 @@ const App = {
             const cols = CONFIG.sheets.columns;
             const sections = [];
             
-            // Agregar información del filtro al inicio
+            /Agregar información del filtro al inicio
             if (startDate || endDate) {
                 // Formatear fechas con horas para mejor legibilidad
                 const formatDateTimeForReport = (isoDateTime) => {
