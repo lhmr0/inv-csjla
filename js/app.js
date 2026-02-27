@@ -60,118 +60,168 @@ const App = {
      * Configura los event listeners
      */
     setupEventListeners() {
-        // Login
-        UI.elements.btnConnect.addEventListener('click', () => this.handleConnect());
+        console.log('🎯 setupEventListeners() llamado');
         
-        // Tabs
-        UI.elements.tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                UI.switchTab(tab.dataset.tab);
+        try {
+            // Login - con verificación de que el elemento existe
+            const btnConnect = document.getElementById('btnConnect');
+            console.log('🔍 btnConnect encontrado:', !!btnConnect);
+            
+            if (!btnConnect) {
+                console.error('❌ CRÍTICO: btnConnect no encontrado en el DOM');
+                console.log('Intentando buscar todos los botones...');
+                console.log(document.querySelectorAll('button').length, 'botones encontrados');
+                return;
+            }
+            
+            btnConnect.addEventListener('click', () => {
+                console.log('✅ Click en Conectar detectado');
+                this.handleConnect();
             });
-        });
-        
-        // Scanner
-        UI.elements.btnStartScan.addEventListener('click', () => this.startScanner());
-        UI.elements.btnStopScan.addEventListener('click', () => this.stopScanner());
-        UI.elements.btnSwitchCamera.addEventListener('click', () => this.switchCamera());
-        UI.elements.btnCaptureFrame = document.getElementById('btnCaptureFrame');
-        if (UI.elements.btnCaptureFrame) {
-            UI.elements.btnCaptureFrame.addEventListener('click', () => this.captureAndAnalyzeFrame());
+            console.log('✅ Evento click en btnConnect registrado');
+        } catch (error) {
+            console.error('❌ Error registrando evento btnConnect:', error);
         }
         
-        // Image processing
-        const btnProcessImage = document.getElementById('btnProcessImage');
-        if (btnProcessImage) {
-            btnProcessImage.addEventListener('click', () => this.handleProcessImage());
+        try {
+            // Tabs
+            const tabs = document.querySelectorAll('.tab');
+            console.log(`🔍 ${tabs.length} tabs encontrados`);
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    UI.switchTab(tab.dataset.tab);
+                });
+            });
+        } catch (error) {
+            console.error('❌ Error registrando eventos de tabs:', error);
         }
         
-        // Manual code from image
-        const btnUseManualCode = document.getElementById('btnUseManualCode');
-        if (btnUseManualCode) {
-            btnUseManualCode.addEventListener('click', () => this.handleManualImageCode());
-        }
+        try {
+            // Scanner
+            const btnStartScan = document.getElementById('btnStartScan');
+            const btnStopScan = document.getElementById('btnStopScan');
+            const btnSwitchCamera = document.getElementById('btnSwitchCamera');
+            
+            if (btnStartScan) btnStartScan.addEventListener('click', () => this.startScanner());
+            if (btnStopScan) btnStopScan.addEventListener('click', () => this.stopScanner());
+            if (btnSwitchCamera) btnSwitchCamera.addEventListener('click', () => this.switchCamera());
+            
+            const btnCaptureFrame = document.getElementById('btnCaptureFrame');
+            if (btnCaptureFrame) {
+                btnCaptureFrame.addEventListener('click', () => this.captureAndAnalyzeFrame());
+            }
+            
+            // Image processing
+            const btnProcessImage = document.getElementById('btnProcessImage');
+            if (btnProcessImage) {
+                btnProcessImage.addEventListener('click', () => this.handleProcessImage());
+            }
+            
+            // Manual code from image
+            const btnUseManualCode = document.getElementById('btnUseManualCode');
+            if (btnUseManualCode) {
+                btnUseManualCode.addEventListener('click', () => this.handleManualImageCode());
+            }
 
-        // Manual Code M from image
-        const btnUseManualCodeM = document.getElementById('btnUseManualCodeM');
-        const manualCodeMInput = document.getElementById('manualCodeM');
-        if (btnUseManualCodeM) {
-            btnUseManualCodeM.addEventListener('click', () => this.handleManualCodeMSearch());
-        }
-        if (manualCodeMInput) {
-            manualCodeMInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.handleManualCodeMSearch();
-            });
-            // Búsqueda automática al llegar a 12 caracteres
-            manualCodeMInput.addEventListener('input', (e) => {
-                const codeM = e.target.value.trim();
-                if (codeM.length === 12) {
-                    UI.showToast(`🔍 Buscando automáticamente: ${codeM}`, 'info');
-                    this.handleManualCodeMSearch();
+            // Manual Code M from image
+            const btnUseManualCodeM = document.getElementById('btnUseManualCodeM');
+            const manualCodeMInput = document.getElementById('manualCodeM');
+            if (btnUseManualCodeM) {
+                btnUseManualCodeM.addEventListener('click', () => this.handleManualCodeMSearch());
+            }
+            if (manualCodeMInput) {
+                manualCodeMInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.handleManualCodeMSearch();
+                });
+                // Búsqueda automática al llegar a 12 caracteres
+                manualCodeMInput.addEventListener('input', (e) => {
+                    const codeM = e.target.value.trim();
+                    if (codeM.length === 12) {
+                        UI.showToast(`🔍 Buscando automáticamente: ${codeM}`, 'info');
+                        this.handleManualCodeMSearch();
+                    }
+                });
+            }
+            
+            // Manual
+            const btnManualSearch = document.getElementById('btnManualSearch');
+            const manualCode = document.getElementById('manualCode');
+            
+            if (btnManualSearch) {
+                btnManualSearch.addEventListener('click', () => this.handleManualSearch());
+            }
+            if (manualCode) {
+                manualCode.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.handleManualSearch();
+                });
+                manualCode.addEventListener('input', async () => {
+                    const autoCode = this.extractSearchCodeFromText(manualCode.value);
+                    if (autoCode && autoCode.length === 12 && autoCode !== this.lastAutoManualCode) {
+                        this.lastAutoManualCode = autoCode;
+                        UI.showToast(`🔍 Buscando automáticamente: ${autoCode}`, 'info');
+                        await this.searchAndShowProduct(autoCode);
+                        manualCode.value = '';
+                    }
+                });
+            }
+            
+            // History
+            const btnClearHistory = document.getElementById('btnClearHistory');
+            const btnExportHistory = document.getElementById('btnExportHistory');
+            if (btnClearHistory) btnClearHistory.addEventListener('click', () => this.clearHistory());
+            if (btnExportHistory) btnExportHistory.addEventListener('click', () => this.exportHistory());
+            
+            // Stats
+            const btnRefreshStats = document.getElementById('btnRefreshStats');
+            if (btnRefreshStats) btnRefreshStats.addEventListener('click', () => this.refreshStats());
+            
+            // Inventoried
+            const btnRefreshInventoried = document.getElementById('btnRefreshInventoried');
+            const btnGenerateReport = document.getElementById('btnGenerateReport');
+            const btnExportInventorieds = document.getElementById('btnExportInventorieds');
+            if (btnRefreshInventoried) {
+                btnRefreshInventoried.addEventListener('click', () => this.updateInventoriedView());
+            }
+            if (btnGenerateReport) {
+                btnGenerateReport.addEventListener('click', () => this.generateWordReport());
+            }
+            if (btnExportInventorieds) {
+                btnExportInventorieds.addEventListener('click', () => this.exportInventoried());
+            }
+            
+            // Modal - Solo cerrar con botón X
+            const closeModal = document.querySelector('.close-modal');
+            if (closeModal) closeModal.addEventListener('click', () => UI.closeModal());
+            
+            // Botón de lupa para buscar el último código escaneado
+            document.addEventListener('searchLastCode', (e) => {
+                const code = e.detail.code;
+                if (code) {
+                    this.searchAndShowProduct(code);
                 }
             });
+            
+            // Manejar visibilidad de la página (pausar escáner)
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && BarcodeScanner.isRunning) {
+                    this.stopScanner();
+                }
+            });
+            
+            console.log('✅ Todos los event listeners registrados correctamente');
+        } catch (error) {
+            console.error('❌ Error registrando event listeners:', error);
         }
-        
-        // Manual
-        UI.elements.btnManualSearch.addEventListener('click', () => this.handleManualSearch());
-        UI.elements.manualCode.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.handleManualSearch();
-        });
-        UI.elements.manualCode.addEventListener('input', async () => {
-            const autoCode = this.extractSearchCodeFromText(UI.elements.manualCode.value);
-            if (autoCode && autoCode.length === 12 && autoCode !== this.lastAutoManualCode) {
-                this.lastAutoManualCode = autoCode;
-                UI.showToast(`🔍 Buscando automáticamente: ${autoCode}`, 'info');
-                await this.searchAndShowProduct(autoCode);
-                UI.clearManualCode();
-            }
-        });
-        
-        // History
-        UI.elements.btnClearHistory.addEventListener('click', () => this.clearHistory());
-        UI.elements.btnExportHistory.addEventListener('click', () => this.exportHistory());
-        
-        // Stats
-        UI.elements.btnRefreshStats.addEventListener('click', () => this.refreshStats());
-        
-        // Inventoried
-        if (UI.elements.btnRefreshInventoried) {
-            UI.elements.btnRefreshInventoried.addEventListener('click', () => this.updateInventoriedView());
-        }
-        if (UI.elements.btnGenerateReport) {
-            UI.elements.btnGenerateReport.addEventListener('click', () => this.generateWordReport());
-        }
-        if (UI.elements.btnExportInventorieds) {
-            UI.elements.btnExportInventorieds.addEventListener('click', () => this.exportInventoried());
-        }
-        
-        // Modal - Solo cerrar con botón X
-        UI.elements.closeModal.addEventListener('click', () => UI.closeModal());
-        // NO permitir cerrar al clickear afuera del modal
-        // NO permitir cerrar con Escape
-        
-        // Botón de lupa para buscar el último código escaneado
-        document.addEventListener('searchLastCode', (e) => {
-            const code = e.detail.code;
-            if (code) {
-                this.searchAndShowProduct(code);
-            }
-        });
-        
-        // Manejar visibilidad de la página (pausar escáner)
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && BarcodeScanner.isRunning) {
-                this.stopScanner();
-            }
-        });
     },
 
     /**
      * Maneja la conexión con Google Sheets
      */
     async handleConnect() {
+        console.log('🔄 handleConnect() iniciado...');
         const formData = UI.getLoginFormValues();
         
-        // Validar datos
+        console.log('📋 Datos del formulario:', formData);
         if (!formData.operator) {
             UI.showToast(CONFIG.messages.operatorRequired, 'warning');
             return;
@@ -607,10 +657,9 @@ const App = {
             return;
         }
 
-        // Mostrar loading rápidamente pero no bloquear la UI excesivamente
-        const loadingTimeout = setTimeout(() => {
-            UI.showLoading('Buscando producto...');
-        }, 50);
+        // Usar temporizador para medir velocidad de búsqueda
+        const startTime = performance.now();
+        let showLoadingTimeout = null;
         
         try {
             // Usar caché si está disponible, sino refrescar datos
@@ -619,13 +668,16 @@ const App = {
             
             if (!cached) {
                 // Si no hay caché, traer datos del servidor
+                showLoadingTimeout = setTimeout(() => {
+                    UI.showLoading('Buscando producto...');
+                }, 100);
                 await SheetsAPI.fetchData();
             }
             
             // Búsqueda rápida en caché
             result = SheetsAPI.findByCode(normalizedCode);
             
-            // Agregar al historial
+            // Agregar al historial sin esperar
             Storage.addToHistory({
                 code: normalizedCode,
                 found: !!result,
@@ -633,16 +685,17 @@ const App = {
                 product: result ? result.product : null
             });
             
-            // Actualizar vista del historial sin esperar
+            // Actualizar vista del historial en background
             this.updateHistoryView();
             
-            // Ocultar loading
-            clearTimeout(loadingTimeout);
-            UI.hideLoading();
+            // Cancelar loading si aún no se mostró
+            if (showLoadingTimeout) {
+                clearTimeout(showLoadingTimeout);
+            }
             
             // Mostrar resultado (encontrado o no encontrado)
             if (!result) {
-                // Resultado no encontrado - mostrar al instante
+                // Resultado no encontrado
                 UI.showToast('⚠️ Producto no encontrado. ¿Deseas agregarlo?', 'warning');
                 UI.showProductModal(result, normalizedCode, async (rowIndex, observations) => {
                     if (rowIndex === 'NEW') {
@@ -652,16 +705,19 @@ const App = {
                     }
                 });
             } else {
-                // Resultado encontrado - mostrar al instante
+                // Resultado encontrado
                 UI.showToast(CONFIG.messages.productFound, 'success');
                 UI.showProductModal(result, normalizedCode, async (rowIndex, observations) => {
                     await this.updateInventory(rowIndex, observations);
                 });
             }
             
+            // Ocultar loading después de mostrar modal
+            UI.hideLoading();
+            
         } catch (error) {
             console.error('Error searching product:', error);
-            clearTimeout(loadingTimeout);
+            if (showLoadingTimeout) clearTimeout(showLoadingTimeout);
             UI.hideLoading();
             UI.showToast(CONFIG.messages.connectionError, 'error');
         }
@@ -675,13 +731,14 @@ const App = {
             return;
         }
 
-        const loadingTimeout = setTimeout(() => {
-            UI.showLoading('Buscando por Código M...');
-        }, 100);
+        let showLoadingTimeout = null;
 
         try {
             const cached = Storage.getCachedData();
             if (!cached) {
+                showLoadingTimeout = setTimeout(() => {
+                    UI.showLoading('Buscando por Código M...');
+                }, 100);
                 await SheetsAPI.fetchData();
             }
 
@@ -695,8 +752,8 @@ const App = {
             });
 
             this.updateHistoryView();
-            clearTimeout(loadingTimeout);
-            UI.hideLoading();
+            
+            if (showLoadingTimeout) clearTimeout(showLoadingTimeout);
 
             if (!result) {
                 UI.showToast('⚠️ Código M no encontrado', 'warning');
@@ -707,6 +764,7 @@ const App = {
                         await this.updateInventory(rowIndex, observations);
                     }
                 });
+                UI.hideLoading();
                 return;
             }
 
@@ -716,9 +774,11 @@ const App = {
             UI.showProductModal(result, patrimonialCode, async (rowIndex, observations) => {
                 await this.updateInventory(rowIndex, observations);
             });
+            
+            UI.hideLoading();
         } catch (error) {
             console.error('Error searching by Código M:', error);
-            clearTimeout(loadingTimeout);
+            if (showLoadingTimeout) clearTimeout(showLoadingTimeout);
             UI.hideLoading();
             UI.showToast(CONFIG.messages.connectionError, 'error');
         }
@@ -1155,7 +1215,7 @@ const App = {
             const cols = CONFIG.sheets.columns;
             const sections = [];
             
-            /Agregar información del filtro al inicio
+            // Agregar información del filtro al inicio
             if (startDate || endDate) {
                 // Formatear fechas con horas para mejor legibilidad
                 const formatDateTimeForReport = (isoDateTime) => {
@@ -1425,7 +1485,12 @@ const App = {
 
 // Iniciar la aplicación cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
-    App.init();
+    console.log('✅ DOM completamente cargado - Iniciando App');
+    try {
+        App.init();
+    } catch (error) {
+        console.error('❌ Error fatal durante init():', error);
+    }
 });
 
 // Registrar Service Worker para PWA
